@@ -21,12 +21,14 @@ import {
 import type {
   AccountUpdateInput,
   AppSettings,
+  AppUpdateStatus,
   SettingsUpdateInput,
   SystemInfo
 } from '../../../../shared/types'
 import {
   deleteDraftMessage,
   deleteOutboxMessage,
+  getAppUpdateStatus,
   importSqlBackup,
   loadAccounts,
   loadInitialData,
@@ -35,6 +37,7 @@ import {
   loadOutboxMessages,
   MESSAGE_LIST_PAGE_SIZE,
   onAccountCreated,
+  onAppUpdateStatus,
   onMailboxChanged,
   openAddAccountWindow,
   openExternalUrl,
@@ -82,6 +85,7 @@ export function MailboxWorkspace(): React.JSX.Element {
   const [accounts, setAccounts] = React.useState<Account[]>([])
   const [settings, setSettings] = React.useState<AppSettings | null>(null)
   const [systemInfo, setSystemInfo] = React.useState<SystemInfo | null>(null)
+  const [updateStatus, setUpdateStatus] = React.useState<AppUpdateStatus | null>(null)
   const [selectedAccountId, setSelectedAccountId] = React.useState('all')
   const [filters, setFilters] = React.useState<MailFilterTag[]>([])
   const [searchKeyword, setSearchKeyword] = React.useState('')
@@ -271,6 +275,25 @@ export function MailboxWorkspace(): React.JSX.Element {
       })
     })
   }, [refreshVisibleMailbox, t])
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    void getAppUpdateStatus()
+      .then((status) => {
+        if (!cancelled) setUpdateStatus(status)
+      })
+      .catch(() => undefined)
+
+    const off = onAppUpdateStatus((status) => {
+      setUpdateStatus(status)
+    })
+
+    return () => {
+      cancelled = true
+      off()
+    }
+  }, [])
 
   const openRouteTarget = React.useCallback(
     async (accountId: string, messageId?: string): Promise<void> => {
@@ -814,6 +837,7 @@ export function MailboxWorkspace(): React.JSX.Element {
         accountCount={realAccounts.length}
         messageCount={selectedAccount.messageCount ?? messages.length}
         syncNotice={syncNotice}
+        updateStatus={updateStatus}
         onRevealDatabase={() => {
           void revealDatabaseInFileManager()
         }}
@@ -866,6 +890,7 @@ export function MailboxWorkspace(): React.JSX.Element {
         open={dialogKind === 'settings'}
         settings={settings}
         systemInfo={systemInfo}
+        updateStatus={updateStatus}
         onOpenChange={(open) => setDialogKind(open ? 'settings' : null)}
         onSubmit={handleUpdateSettings}
         onImported={reloadInitialData}

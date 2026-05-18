@@ -6,6 +6,7 @@ import type {
   AccountUpdateInput,
   AppSettings,
   AppUpdateCheckResult,
+  AppUpdateStatus,
   BackupImportResult,
   AttachmentDownloadResult,
   ComposeDraft as SharedComposeDraft,
@@ -263,6 +264,27 @@ export async function checkForAppUpdates(): Promise<AppUpdateCheckResult> {
   }
 
   return checkUpdates()
+}
+
+export async function getAppUpdateStatus(): Promise<AppUpdateStatus> {
+  const status = window.api?.updates?.status
+  if (typeof status !== 'function') {
+    return {
+      state: 'unsupported',
+      currentVersion: '',
+      message: getStaticTranslation('settings.about.updateServiceUnavailable'),
+      updatedAt: new Date().toISOString()
+    }
+  }
+
+  return status()
+}
+
+export function onAppUpdateStatus(callback: (status: AppUpdateStatus) => void): () => void {
+  const onStatus = window.api?.updates?.onStatus
+  if (typeof onStatus !== 'function') return () => {}
+
+  return onStatus(callback)
 }
 
 export async function loadAccounts(): Promise<Account[]> {

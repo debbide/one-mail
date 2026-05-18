@@ -47,9 +47,11 @@ import {
 } from '@renderer/components/ui/select'
 import { Switch } from '@renderer/components/ui/switch'
 import { Alert, AlertDescription, AlertTitle } from '@renderer/components/ui/alert'
+import { Progress } from '@renderer/components/ui/progress'
 import type {
   AppSettings,
   AppUpdateCheckResult,
+  AppUpdateStatus,
   SettingsUpdateInput,
   SystemInfo
 } from '../../../../shared/types'
@@ -60,6 +62,7 @@ type SettingsDialogProps = {
   open: boolean
   settings: AppSettings | null
   systemInfo: SystemInfo | null
+  updateStatus: AppUpdateStatus | null
   onOpenChange: (open: boolean) => void
   onSubmit: (input: SettingsUpdateInput) => Promise<void>
   onImported?: () => Promise<void> | void
@@ -106,6 +109,7 @@ export function SettingsDialog({
   open,
   settings,
   systemInfo,
+  updateStatus,
   onOpenChange,
   onSubmit,
   onImported
@@ -115,7 +119,6 @@ export function SettingsDialog({
   const [section, setSection] = React.useState<SettingsSection>('general')
   const [pending, setPending] = React.useState(false)
   const [backupPending, setBackupPending] = React.useState<'export' | 'import' | null>(null)
-  const [updatePending, setUpdatePending] = React.useState(false)
   const [updateResult, setUpdateResult] = React.useState<AppUpdateCheckResult | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [backupMessage, setBackupMessage] = React.useState<BackupMessage | null>(null)
@@ -235,7 +238,7 @@ export function SettingsDialog({
   }, [])
 
   function handleOpenChange(nextOpen: boolean): void {
-    if ((pending || backupPending || updatePending) && !nextOpen) return
+    if ((pending || backupPending) && !nextOpen) return
 
     if (!nextOpen) {
       flushPendingSettings()
@@ -293,7 +296,6 @@ export function SettingsDialog({
   }
 
   async function handleCheckUpdates(): Promise<void> {
-    setUpdatePending(true)
     setUpdateResult(null)
 
     try {
@@ -306,8 +308,6 @@ export function SettingsDialog({
         message:
           updateError instanceof Error ? updateError.message : t('settings.about.updateError')
       })
-    } finally {
-      setUpdatePending(false)
     }
   }
 
@@ -361,7 +361,7 @@ export function SettingsDialog({
           ) : (
             <AboutSettings
               systemInfo={systemInfo}
-              updatePending={updatePending}
+              updateStatus={updateStatus}
               updateResult={updateResult}
               onCheckUpdates={handleCheckUpdates}
             />
@@ -537,17 +537,18 @@ function BackupSettings({
 
 function AboutSettings({
   systemInfo,
-  updatePending,
+  updateStatus,
   updateResult,
   onCheckUpdates
 }: {
   systemInfo: SystemInfo | null
-  updatePending: boolean
+  updateStatus: AppUpdateStatus | null
   updateResult: AppUpdateCheckResult | null
   onCheckUpdates: () => Promise<void>
 }): React.JSX.Element {
   const { t } = useI18n()
   const version = systemInfo?.appVersion ? `v${systemInfo.appVersion}` : t('common.loading')
+  const updatePending = isUpdateBusy(updateStatus)
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-[540px] flex-col gap-3 p-3 sm:p-4">
@@ -589,9 +590,39 @@ function AboutSettings({
           }
         />
 
-        {updateResult ? <UpdateResultView result={updateResult} /> : null}
+        {updateStatus && updateStatus.state !== 'idle' ? (
+          <UpdateStatusView status={updateStatus} />
+        ) : updateResult ? (
+          <UpdateResultView result={updateResult} />
+        ) : null}
       </FieldGroup>
     </div>
+  )
+}
+
+function UpdateStatusView({ status }: { status: AppUpdateStatus }): React.JSX.Element {
+  const { t } = useI18n()
+  const variant = status.state === 'error' ? 'destructive' : 'default'
+  const showProgress = status.state === 'downloading' || Boolean(status.progress)
+  const progressValue = status.progress?.percent ?? (status.state === 'downloaded' ? 100 : 0)
+  const Icon = isUpdateBusy(status) ? LoaderCircle : ShieldCheck
+
+  return (
+    <Alert className="py-2 text-xs" variant={variant}>
+      <Icon className={isUpdateBusy(status) ? 'animate-spin' : undefined} />
+      <AlertTitle>{getUpdateStatusTitle(status, t)}</AlertTitle>
+      <AlertDescription className="flex flex-col gap-2 text-xs">
+        <span>{status.message}</span>
+        {showProgress ? (
+          <span className="flex flex-col gap-1">
+            <Progress value={progressValue} />
+            <span className="text-muted-foreground">
+              {formatUpdateProgress(status.progress, t)}
+            </span>
+          </span>
+        ) : null}
+      </AlertDescription>
+    </Alert>
   )
 }
 
@@ -635,6 +666,57 @@ function BackupMessageView({ message }: { message: BackupMessage }): React.JSX.E
       </Button>
     </div>
   )
+}
+
+function isUpdateBusy(status: AppUpdateStatus | null): boolean {
+  return (
+    status?.state === 'checking' ||
+    status?.state === 'available' ||
+    status?.state === 'downloading'
+  )
+}
+
+function getUpdateStatusTitle(
+  status: AppUpdateStatus,
+  t: (key: TranslationKey) => string
+): string {
+  if (status.state === 'checking') return t('settings.about.updateChecking')
+  if (status.state === 'downloading') return t('settings.about.updateDownloading')
+  if (status.state === 'downloaded') return t('settings.about.updateDownloaded')
+  if (status.state === 'available') {
+    return status.latestVersion
+      ? `${t('settings.about.updateAvailable')} v${status.latestVersion}`
+      : t('settings.about.updateAvailable')
+  }
+  if (status.state === 'not_available') return t('settings.about.updateNotAvailable')
+  if (status.state === 'unsupported') return t('settings.about.updateUnsupported')
+  if (status.state === 'cancelled') return t('settings.about.updateCancelled')
+  if (status.state === 'error') return t('settings.about.updateFailed')
+  return t('settings.about.updateIdle')
+}
+
+function formatUpdateProgress(
+  progress: AppUpdateStatus['progress'],
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string
+): string {
+  if (!progress) {
+    return t('settings.about.updateProgressUnknown')
+  }
+
+  return t('settings.about.updateProgress', {
+    percent: progress.percent.toFixed(1),
+    transferred: formatBytes(progress.transferredBytes),
+    total: formatBytes(progress.totalBytes),
+    speed: formatBytes(progress.bytesPerSecond)
+  })
+}
+
+function formatBytes(value: number): string {
+  if (!value) return '0 B'
+  if (value < 1024) return `${Math.round(value)} B`
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
+  if (value < 1024 * 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`
+  return `${(value / 1024 / 1024 / 1024).toFixed(1)} GB`
 }
 
 function getUpdateResultTitle(
@@ -724,6 +806,7 @@ function BackupActionButton({
   )
 }
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function createSettingsSchema(t: (key: TranslationKey) => string) {
   return z.object({
     syncIntervalMinutes: z.coerce

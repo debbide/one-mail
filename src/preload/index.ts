@@ -76,7 +76,13 @@ const api = {
     importSql: () => ipcRenderer.invoke('settings/importSql')
   },
   updates: {
-    check: () => ipcRenderer.invoke('updates/check')
+    check: () => ipcRenderer.invoke('updates/check'),
+    status: () => ipcRenderer.invoke('updates/status'),
+    onStatus: (callback): (() => void) => {
+      const listener = (_event, status): void => callback(status)
+      ipcRenderer.on('updates/status', listener)
+      return () => ipcRenderer.off('updates/status', listener)
+    }
   },
   system: {
     info: () => ipcRenderer.invoke('system/info'),

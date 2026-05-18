@@ -369,6 +369,31 @@ export type AppUpdateCheckResult = {
   message: string
 }
 
+export type AppUpdateProgress = {
+  percent: number
+  transferredBytes: number
+  totalBytes: number
+  bytesPerSecond: number
+}
+
+export type AppUpdateStatus = {
+  state:
+    | 'idle'
+    | 'checking'
+    | 'available'
+    | 'downloading'
+    | 'downloaded'
+    | 'not_available'
+    | 'unsupported'
+    | 'cancelled'
+    | 'error'
+  currentVersion: string
+  latestVersion?: string
+  message: string
+  progress?: AppUpdateProgress
+  updatedAt: string
+}
+
 export type OneMailApi = {
   accounts: {
     list: () => Promise<MailAccount[]>
@@ -426,6 +451,8 @@ export type OneMailApi = {
   }
   updates: {
     check: () => Promise<AppUpdateCheckResult>
+    status: () => Promise<AppUpdateStatus>
+    onStatus: (callback: (status: AppUpdateStatus) => void) => () => void
   }
   system: {
     info: () => Promise<SystemInfo>
