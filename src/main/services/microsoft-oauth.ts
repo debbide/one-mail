@@ -1,8 +1,6 @@
 import { BrowserWindow, clipboard } from 'electron'
 import { createHash, randomBytes } from 'node:crypto'
-import { existsSync, readFileSync } from 'node:fs'
 import http from 'node:http'
-import { join } from 'node:path'
 import { URLSearchParams } from 'node:url'
 import type { OAuthAuthorizationMode } from '../../shared/types'
 import { saveOAuthToken, readOAuthToken, type OAuthTokenPayload } from './oauth-token-store'
@@ -140,25 +138,7 @@ async function refreshStoredMicrosoftAccessToken(
 }
 
 function getMicrosoftClientId(): string {
-  const clientId = process.env.ONEMAIL_MICROSOFT_CLIENT_ID?.trim() ?? readLocalEnvClientId()
-  if (clientId) return clientId
-
-  throw new Error(
-    '缺少 ONEMAIL_MICROSOFT_CLIENT_ID。请先在 Microsoft Entra 注册桌面应用，并配置 http://localhost 回调 URI。'
-  )
-}
-
-function readLocalEnvClientId(): string | undefined {
-  const envPath = join(process.cwd(), '.env.local')
-  if (!existsSync(envPath)) return undefined
-
-  const lines = readFileSync(envPath, 'utf8').split(/\r?\n/)
-  for (const line of lines) {
-    const match = /^\s*ONEMAIL_MICROSOFT_CLIENT_ID\s*=\s*(.+?)\s*$/.exec(line)
-    if (match) return match[1].replace(/^"|"$/g, '').trim()
-  }
-
-  return undefined
+  return '2d9a4659-0a30-4622-8113-0f72b632d176'
 }
 
 function waitForMicrosoftAuthorization(
