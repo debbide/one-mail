@@ -3,6 +3,10 @@ productName: OneMail
 directories:
   buildResources: build
 files:
+  - out/**
+  - package.json
+  - node_modules/**
+  - resources/**
   - "!**/.vscode/*"
   - "!src/*"
   - "!electron.vite.config.{js,ts,mjs,cjs}"
