@@ -83,18 +83,18 @@ export const providerPresets: ProviderPreset[] = [
     kind: 'aliyun',
     labelKey: 'account.provider.aliyun',
     providerKey: 'aliyun',
-    authType: 'password',
+    authType: 'app_password',
     imapHost: 'imap.aliyun.com',
     imapPort: 993,
     imapSecurity: 'ssl_tls',
     smtpHost: 'smtp.aliyun.com',
     smtpPort: 465,
     smtpSecurity: 'ssl_tls',
-    smtpAuthType: 'password',
+    smtpAuthType: 'app_password',
     smtpEnabled: true,
-    passwordLabelKey: 'account.form.password',
+    passwordLabelKey: 'account.form.aliyunClientPassword',
     passwordPlaceholderKey: 'account.form.aliyunPasswordPlaceholder',
-    guideKey: 'account.add.guide.password'
+    guideKey: 'account.add.guide.aliyun'
   },
   {
     kind: 'aliyunEnterprise',

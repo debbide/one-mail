@@ -1,11 +1,14 @@
 import * as React from 'react'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
-import { EditorContent, useEditor, type Editor } from '@tiptap/react'
+import { EditorContent, Extension, useEditor, type Attribute, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import {
-  ALargeSmall,
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   Bold,
+  Check,
   Italic,
   LinkIcon,
   List,
@@ -13,22 +16,31 @@ import {
   Maximize2,
   Minimize2,
   Paperclip,
+  Redo,
   Save,
   Send,
   Strikethrough,
   Trash2,
   Underline,
+  Unlink,
+  Undo,
   X
 } from 'lucide-react'
 
 import { AddressInput } from '@renderer/components/mail/address-input'
 import type { Account } from '@renderer/components/mail/types'
 import { Button } from '@renderer/components/ui/button'
-import { ButtonGroup } from '@renderer/components/ui/button-group'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput
+} from '@renderer/components/ui/input-group'
 import { NativeSelect, NativeSelectOption } from '@renderer/components/ui/native-select'
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { Separator } from '@renderer/components/ui/separator'
 import {
   Tooltip,
@@ -38,8 +50,30 @@ import {
 } from '@renderer/components/ui/tooltip'
 import { cn } from '@renderer/lib/utils'
 import { selectMailAttachments, type ComposeDraft, type SendMessageInput } from '@renderer/lib/api'
-import { useI18n, type TranslationKey } from '@renderer/lib/i18n'
+import { useI18n } from '@renderer/lib/i18n'
 import type { MailAttachmentInput } from '../../../../shared/types'
+
+const COMPOSER_ADDRESS_FIELD_CLASS =
+  'min-h-10 items-center gap-3 border-b px-4 py-1.5 *:data-[slot=field-label]:flex-none'
+const COMPOSER_TEXT_ALIGNMENTS = ['left', 'center', 'right'] as const
+
+type ComposerTextAlign = (typeof COMPOSER_TEXT_ALIGNMENTS)[number]
+type EditorSelectionRange = { from: number; to: number }
+
+const ComposerTextAlignExtension = Extension.create({
+  name: 'composerTextAlign',
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['heading', 'paragraph'],
+        attributes: {
+          textAlign: createTextAlignAttribute()
+        }
+      }
+    ]
+  }
+})
 
 type MailComposerProps = {
   open: boolean
@@ -79,13 +113,8 @@ export function MailComposer({
   const sendAccounts = accounts.filter((account) => account.accountId)
   const draftKey = getDraftKey(draft)
   const [expanded, setExpanded] = React.useState(false)
-  const [formattingVisible, setFormattingVisible] = React.useState(false)
   const [ccVisible, setCcVisible] = React.useState(Boolean(draft?.cc?.length))
   const [bccVisible, setBccVisible] = React.useState(Boolean(draft?.bcc?.length))
-  const [bodyEditor, setBodyEditor] = React.useState<Editor | null>(null)
-  const handleBodyEditorChange = React.useCallback((editor: Editor | null) => {
-    setBodyEditor(editor)
-  }, [])
   const [formState, setFormState] = React.useState<ComposerFormState>(() =>
     createFormState(draft, draftKey)
   )
@@ -211,7 +240,6 @@ export function MailComposer({
   React.useEffect(() => {
     setCcVisible(Boolean(draft?.cc?.length))
     setBccVisible(Boolean(draft?.bcc?.length))
-    setFormattingVisible(false)
   }, [draftKey, draft?.bcc?.length, draft?.cc?.length])
 
   if (!open) return <></>
@@ -275,7 +303,7 @@ export function MailComposer({
 
         <div className="min-h-0 flex-1 overflow-auto">
           <FieldGroup className="gap-0">
-            <Field className="min-h-10 border-b px-4 py-1.5" orientation="horizontal">
+            <Field className={COMPOSER_ADDRESS_FIELD_CLASS} orientation="horizontal">
               <ComposerFieldLabel htmlFor="composer-account">{t('mail.composer.from')}</ComposerFieldLabel>
               <NativeSelect
                 id="composer-account"
@@ -293,7 +321,7 @@ export function MailComposer({
                 ))}
               </NativeSelect>
             </Field>
-            <Field className="min-h-10 border-b px-4 py-1.5" orientation="horizontal">
+            <Field className={COMPOSER_ADDRESS_FIELD_CLASS} orientation="horizontal">
               <ComposerFieldLabel htmlFor="composer-to">{t('mail.composer.to')}</ComposerFieldLabel>
               <AddressInput
                 id="composer-to"
@@ -312,7 +340,7 @@ export function MailComposer({
               />
             </Field>
             {ccVisible ? (
-              <Field className="min-h-10 border-b px-4 py-1.5" orientation="horizontal">
+              <Field className={COMPOSER_ADDRESS_FIELD_CLASS} orientation="horizontal">
                 <ComposerFieldLabel htmlFor="composer-cc">{t('mail.composer.cc')}</ComposerFieldLabel>
                 <AddressInput
                   id="composer-cc"
@@ -324,7 +352,7 @@ export function MailComposer({
               </Field>
             ) : null}
             {bccVisible ? (
-              <Field className="min-h-10 border-b px-4 py-1.5" orientation="horizontal">
+              <Field className={COMPOSER_ADDRESS_FIELD_CLASS} orientation="horizontal">
                 <ComposerFieldLabel htmlFor="composer-bcc">{t('mail.composer.bcc')}</ComposerFieldLabel>
                 <AddressInput
                   id="composer-bcc"
@@ -351,8 +379,6 @@ export function MailComposer({
               bodyText={form.bodyText}
               disabled={pending}
               expanded={expanded}
-              formattingVisible={formattingVisible}
-              onEditorChange={handleBodyEditorChange}
               onChange={(value) => updateForm(value)}
             />
             {form.attachments.length > 0 ? (
@@ -443,33 +469,16 @@ export function MailComposer({
 
         <footer className="flex min-h-16 shrink-0 items-center justify-between gap-2 border-t px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">
-            <ButtonGroup className="shrink-0">
-              <Button
-                className="min-w-24"
-                onClick={() => {
-                  void handleSubmit('send')
-                }}
-                disabled={pending || !draft}
-              >
-                <Send data-icon="inline-start" />
-                {pending ? t('common.sending') : t('mail.composer.send')}
-              </Button>
-              <Button type="button" size="icon" aria-label={t('mail.composer.moreSendOptions')} disabled>
-                <span aria-hidden="true">▾</span>
-              </Button>
-            </ButtonGroup>
-            <ComposerToolButton
-              label={
-                formattingVisible
-                  ? t('mail.composer.hideFormatting')
-                  : t('mail.composer.showFormatting')
-              }
-              active={formattingVisible}
-              disabled={pending}
-              onClick={() => setFormattingVisible((value) => !value)}
+            <Button
+              className="min-w-24 shrink-0"
+              onClick={() => {
+                void handleSubmit('send')
+              }}
+              disabled={pending || !draft}
             >
-              <ALargeSmall />
-            </ComposerToolButton>
+              <Send data-icon="inline-start" />
+              {pending ? t('common.sending') : t('mail.composer.send')}
+            </Button>
             <ComposerToolButton
               label={t('mail.composer.addAttachment')}
               disabled={pending}
@@ -478,13 +487,6 @@ export function MailComposer({
               }}
             >
               <Paperclip />
-            </ComposerToolButton>
-            <ComposerToolButton
-              label={t('mail.composer.insertLink')}
-              disabled={pending || !bodyEditor}
-              onClick={() => setEditorLink(bodyEditor, t)}
-            >
-              <LinkIcon />
             </ComposerToolButton>
           </div>
           <div className="flex items-center gap-1">
@@ -521,7 +523,10 @@ function ComposerFieldLabel({
   children: React.ReactNode
 }): React.JSX.Element {
   return (
-    <FieldLabel htmlFor={htmlFor} className="w-16 shrink-0 text-muted-foreground">
+    <FieldLabel
+      htmlFor={htmlFor}
+      className="w-14 shrink-0 justify-start text-left text-muted-foreground"
+    >
       {children}
     </FieldLabel>
   )
@@ -576,8 +581,6 @@ function MailBodyEditor({
   bodyText,
   disabled,
   expanded,
-  formattingVisible,
-  onEditorChange,
   onChange
 }: {
   draftKey: string
@@ -585,8 +588,6 @@ function MailBodyEditor({
   bodyText: string
   disabled: boolean
   expanded: boolean
-  formattingVisible: boolean
-  onEditorChange: (editor: Editor | null) => void
   onChange: (patch: Pick<ComposerFormState, 'bodyHtml' | 'bodyText'>) => void
 }): React.JSX.Element {
   const { t } = useI18n()
@@ -601,6 +602,7 @@ function MailBodyEditor({
         autolink: true,
         defaultProtocol: 'https'
       }),
+      ComposerTextAlignExtension,
       Placeholder.configure({
         placeholder: t('mail.composer.bodyPlaceholder')
       })
@@ -611,8 +613,7 @@ function MailBodyEditor({
     editorProps: {
       attributes: {
         id: 'composer-body',
-        class:
-          'prose-mail min-h-full px-3 py-3 text-sm leading-6 outline-none break-words focus-visible:outline-none'
+        class: 'composer-body min-h-full px-3 py-3 outline-none break-words focus-visible:outline-none'
       }
     },
     onUpdate: ({ editor: currentEditor }) => {
@@ -628,11 +629,6 @@ function MailBodyEditor({
   }, [disabled, editor])
 
   React.useEffect(() => {
-    onEditorChange(editor)
-    return () => onEditorChange(null)
-  }, [editor, onEditorChange])
-
-  React.useEffect(() => {
     if (!editor) return
     if (lastDraftKeyRef.current === draftKey) return
     lastDraftKeyRef.current = draftKey
@@ -641,7 +637,9 @@ function MailBodyEditor({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {formattingVisible ? <EditorToolbar editor={editor} disabled={disabled} /> : null}
+      <div className="flex min-h-10 shrink-0 items-center border-b bg-muted/30 px-3 py-1.5">
+        <EditorToolbar editor={editor} disabled={disabled} />
+      </div>
       <div
         className={cn('min-h-80 overflow-auto', expanded ? 'min-h-[28rem]' : 'max-h-[42vh]')}
         onClick={() => editor?.commands.focus()}
@@ -660,13 +658,46 @@ function EditorToolbar({
   disabled: boolean
 }): React.JSX.Element {
   const { t } = useI18n()
+  const [, rerenderToolbar] = React.useReducer((count: number) => count + 1, 0)
+
+  React.useEffect(() => {
+    if (!editor) return
+
+    editor.on('transaction', rerenderToolbar)
+    editor.on('selectionUpdate', rerenderToolbar)
+    editor.on('update', rerenderToolbar)
+
+    return () => {
+      editor.off('transaction', rerenderToolbar)
+      editor.off('selectionUpdate', rerenderToolbar)
+      editor.off('update', rerenderToolbar)
+    }
+  }, [editor])
 
   return (
-    <div className="flex min-h-10 shrink-0 items-center gap-1 border-b bg-muted/50 px-3">
+    <div className="flex min-w-0 flex-wrap items-center gap-1">
+      <FormatButton
+        label={t('mail.composer.undo')}
+        disabled={disabled || !editor || !editor.can().undo()}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => editor?.chain().focus().undo().run()}
+      >
+        <Undo />
+      </FormatButton>
+      <FormatButton
+        label={t('mail.composer.redo')}
+        disabled={disabled || !editor || !editor.can().redo()}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => editor?.chain().focus().redo().run()}
+      >
+        <Redo />
+      </FormatButton>
+      <Separator orientation="vertical" className="mx-1 h-5" />
       <FormatButton
         label={t('mail.composer.bold')}
         active={editor?.isActive('bold')}
         disabled={disabled || !editor}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => editor?.chain().focus().toggleBold().run()}
       >
         <Bold />
@@ -675,6 +706,7 @@ function EditorToolbar({
         label={t('mail.composer.italic')}
         active={editor?.isActive('italic')}
         disabled={disabled || !editor}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => editor?.chain().focus().toggleItalic().run()}
       >
         <Italic />
@@ -683,6 +715,7 @@ function EditorToolbar({
         label={t('mail.composer.underline')}
         active={editor?.isActive('underline')}
         disabled={disabled || !editor}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => editor?.chain().focus().toggleUnderline().run()}
       >
         <Underline />
@@ -691,6 +724,7 @@ function EditorToolbar({
         label={t('mail.composer.strikethrough')}
         active={editor?.isActive('strike')}
         disabled={disabled || !editor}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => editor?.chain().focus().toggleStrike().run()}
       >
         <Strikethrough />
@@ -700,6 +734,7 @@ function EditorToolbar({
         label={t('mail.composer.bulletList')}
         active={editor?.isActive('bulletList')}
         disabled={disabled || !editor}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => editor?.chain().focus().toggleBulletList().run()}
       >
         <List />
@@ -708,19 +743,136 @@ function EditorToolbar({
         label={t('mail.composer.orderedList')}
         active={editor?.isActive('orderedList')}
         disabled={disabled || !editor}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => editor?.chain().focus().toggleOrderedList().run()}
       >
         <ListOrdered />
       </FormatButton>
+      <Separator orientation="vertical" className="mx-1 h-5" />
       <FormatButton
-        label={t('mail.composer.link')}
-        active={editor?.isActive('link')}
+        label={t('mail.composer.alignLeft')}
+        active={isTextAlignActive(editor, 'left')}
         disabled={disabled || !editor}
-        onClick={() => setEditorLink(editor, t)}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => setComposerTextAlign(editor, 'left')}
       >
-        <LinkIcon />
+        <AlignLeft />
       </FormatButton>
+      <FormatButton
+        label={t('mail.composer.alignCenter')}
+        active={isTextAlignActive(editor, 'center')}
+        disabled={disabled || !editor}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => setComposerTextAlign(editor, 'center')}
+      >
+        <AlignCenter />
+      </FormatButton>
+      <FormatButton
+        label={t('mail.composer.alignRight')}
+        active={isTextAlignActive(editor, 'right')}
+        disabled={disabled || !editor}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => setComposerTextAlign(editor, 'right')}
+      >
+        <AlignRight />
+      </FormatButton>
+      <Separator orientation="vertical" className="mx-1 h-5" />
+      <LinkFormatButton editor={editor} disabled={disabled} />
     </div>
+  )
+}
+
+function LinkFormatButton({
+  editor,
+  disabled
+}: {
+  editor: Editor | null
+  disabled: boolean
+}): React.JSX.Element {
+  const { t } = useI18n()
+  const [open, setOpen] = React.useState(false)
+  const [url, setUrl] = React.useState('')
+  const savedRangeRef = React.useRef<EditorSelectionRange | null>(null)
+  const active = Boolean(editor?.isActive('link'))
+  const unavailable = disabled || !editor
+
+  function saveSelection(): void {
+    if (!editor) return
+    savedRangeRef.current = {
+      from: editor.state.selection.from,
+      to: editor.state.selection.to
+    }
+    setUrl((editor.getAttributes('link').href as string | undefined) ?? '')
+  }
+
+  function handleOpenChange(nextOpen: boolean): void {
+    if (nextOpen) saveSelection()
+    setOpen(nextOpen)
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
+    event.preventDefault()
+    applyEditorLink(editor, url, savedRangeRef.current)
+    setOpen(false)
+  }
+
+  function handleRemove(): void {
+    removeEditorLink(editor, savedRangeRef.current)
+    setOpen(false)
+  }
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant={active ? 'secondary' : 'ghost'}
+          size="icon-sm"
+          aria-label={t('mail.composer.link')}
+          aria-pressed={active}
+          disabled={unavailable}
+          onMouseDown={(event) => {
+            event.preventDefault()
+            saveSelection()
+          }}
+        >
+          <LinkIcon />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-80">
+        <form onSubmit={handleSubmit}>
+          <InputGroup>
+            <InputGroupInput
+              value={url}
+              autoFocus
+              aria-label={t('mail.composer.linkPrompt')}
+              placeholder={t('mail.composer.linkPlaceholder')}
+              onChange={(event) => setUrl(event.target.value)}
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                type="button"
+                size="icon-xs"
+                variant="ghost"
+                aria-label={t('mail.composer.removeLink')}
+                disabled={!active && !url.trim()}
+                onClick={handleRemove}
+              >
+                <Unlink />
+              </InputGroupButton>
+              <InputGroupButton
+                type="submit"
+                size="icon-xs"
+                variant="default"
+                aria-label={t('mail.composer.applyLink')}
+              >
+                <Check />
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </form>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -728,12 +880,14 @@ function ComposerToolButton({
   label,
   active,
   disabled,
+  onMouseDown,
   onClick,
   children
 }: {
   label: string
   active?: boolean
   disabled?: boolean
+  onMouseDown?: (event: React.MouseEvent<HTMLButtonElement>) => void
   onClick?: () => void
   children: React.ReactNode
 }): React.JSX.Element {
@@ -747,6 +901,7 @@ function ComposerToolButton({
           aria-label={label}
           aria-pressed={active}
           disabled={disabled}
+          onMouseDown={onMouseDown}
           onClick={onClick}
         >
           {children}
@@ -761,12 +916,14 @@ function FormatButton({
   label,
   active,
   disabled,
+  onMouseDown,
   onClick,
   children
 }: {
   label: string
   active?: boolean
   disabled?: boolean
+  onMouseDown?: (event: React.MouseEvent<HTMLButtonElement>) => void
   onClick: () => void
   children: React.ReactNode
 }): React.JSX.Element {
@@ -780,6 +937,7 @@ function FormatButton({
           aria-label={label}
           aria-pressed={active}
           disabled={disabled}
+          onMouseDown={onMouseDown}
           onClick={onClick}
         >
           {children}
@@ -790,20 +948,97 @@ function FormatButton({
   )
 }
 
-function setEditorLink(
+function createTextAlignAttribute(): Attribute {
+  return {
+    default: null,
+    parseHTML: (element) => {
+      const value = element.style.textAlign
+      return isComposerTextAlign(value) ? value : null
+    },
+    renderHTML: (attributes) => {
+      const value = attributes.textAlign
+      if (!isComposerTextAlign(value)) return null
+      return { style: `text-align: ${value}` }
+    }
+  }
+}
+
+function isComposerTextAlign(value: unknown): value is ComposerTextAlign {
+  return typeof value === 'string' && COMPOSER_TEXT_ALIGNMENTS.includes(value as ComposerTextAlign)
+}
+
+function setComposerTextAlign(editor: Editor | null, textAlign: ComposerTextAlign): void {
+  if (!editor) return
+
+  editor
+    .chain()
+    .focus()
+    .updateAttributes('paragraph', { textAlign })
+    .updateAttributes('heading', { textAlign })
+    .run()
+}
+
+function isTextAlignActive(editor: Editor | null, textAlign: ComposerTextAlign): boolean {
+  if (!editor) return false
+  return editor.isActive({ textAlign }) || (textAlign === 'left' && !hasTextAlign(editor))
+}
+
+function hasTextAlign(editor: Editor): boolean {
+  return COMPOSER_TEXT_ALIGNMENTS.some((textAlign) => editor.isActive({ textAlign }))
+}
+
+function applyEditorLink(
   editor: Editor | null,
-  t: (key: TranslationKey) => string
+  value: string,
+  range: EditorSelectionRange | null
 ): void {
   if (!editor) return
-  const previousUrl = editor.getAttributes('link').href as string | undefined
-  const url = window.prompt(t('mail.composer.linkPrompt'), previousUrl ?? 'https://')
-  if (url === null) return
-  if (!url.trim()) {
-    editor.chain().focus().extendMarkRange('link').unsetLink().run()
+
+  restoreEditorSelection(editor, range)
+
+  if (!value.trim()) {
+    removeEditorLink(editor, range)
     return
   }
 
-  editor.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run()
+  const href = normalizeLinkUrl(value)
+
+  if (editor.isActive('link')) {
+    editor.chain().focus().extendMarkRange('link').setLink({ href }).run()
+    return
+  }
+
+  if (editor.state.selection.empty) {
+    editor
+      .chain()
+      .focus()
+      .insertContent(`<a href="${escapeHtmlAttribute(href)}">${escapeHtml(href)}</a>`)
+      .unsetLink()
+      .run()
+    return
+  }
+
+  editor.chain().focus().extendMarkRange('link').setLink({ href }).run()
+}
+
+function removeEditorLink(editor: Editor | null, range: EditorSelectionRange | null): void {
+  if (!editor) return
+  restoreEditorSelection(editor, range)
+  editor.chain().focus().extendMarkRange('link').unsetLink().run()
+}
+
+function restoreEditorSelection(editor: Editor, range: EditorSelectionRange | null): void {
+  if (!range) {
+    editor.commands.focus()
+    return
+  }
+
+  const docSize = editor.state.doc.content.size
+  editor.commands.setTextSelection({
+    from: Math.min(range.from, docSize),
+    to: Math.min(range.to, docSize)
+  })
+  editor.commands.focus()
 }
 
 function getDraftKey(draft: ComposeDraft | null): string {
@@ -901,6 +1136,15 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return escapeHtml(value).replace(/`/g, '&#96;')
+}
+
+function normalizeLinkUrl(value: string): string {
+  const url = value.trim()
+  return /^[a-z][a-z\d+.-]*:/i.test(url) ? url : `https://${url}`
 }
 
 function formatAttachmentTotal(attachments: MailAttachmentInput[]): string {

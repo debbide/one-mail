@@ -1,7 +1,11 @@
 import { app, dialog } from 'electron'
-import { writeFileSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { existsSync, writeFileSync } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
 import { getAccount } from '../db/repositories/account.repository'
+import {
+  getLastAttachmentDownloadDir,
+  setLastAttachmentDownloadDir
+} from '../db/repositories/settings.repository'
 import { getDatabase, toNumber, toOptionalString, type SqliteRow } from '../db/connection'
 import type { AttachmentDownloadResult } from '../ipc/types'
 import { SimpleImapSession } from './imap-session'
@@ -25,7 +29,7 @@ export async function downloadAttachment(attachmentId: number): Promise<Attachme
 
   const saveResult = await dialog.showSaveDialog({
     title: '下载附件',
-    defaultPath: join(app.getPath('downloads'), sanitizeFileName(locator.filename)),
+    defaultPath: join(getDefaultAttachmentDownloadDir(), sanitizeFileName(locator.filename)),
     filters: [{ name: '附件', extensions: [getFileExtension(locator.filename) ?? '*'] }]
   })
 
@@ -35,12 +39,20 @@ export async function downloadAttachment(attachmentId: number): Promise<Attachme
 
   const attachment = await loadAttachmentContentByLocator(locator)
   writeFileSync(saveResult.filePath, attachment.content)
+  setLastAttachmentDownloadDir(dirname(saveResult.filePath))
 
   return {
     downloaded: true,
     attachmentId,
     filePath: saveResult.filePath
   }
+}
+
+function getDefaultAttachmentDownloadDir(): string {
+  const lastDirectory = getLastAttachmentDownloadDir()
+  if (lastDirectory && existsSync(lastDirectory)) return lastDirectory
+
+  return app.getPath('downloads')
 }
 
 export async function loadAttachmentContent(attachmentId: number): Promise<ParsedMessageAttachment> {

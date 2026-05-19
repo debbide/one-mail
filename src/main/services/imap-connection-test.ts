@@ -417,6 +417,26 @@ function formatImapActionError(
     ].join(' ')
   }
 
+  if (action === '登录认证' && input && isAliyunEnterpriseInput(input)) {
+    return [
+      '阿里企业邮箱登录认证失败：服务器拒绝了当前账号或密码/专用密码。',
+      '请让管理员确认已允许使用三方客户端，并已为当前账号开启 IMAP/SMTP 服务；服务器为 imap.qiye.aliyun.com，SSL 端口 993。',
+      '如果企业强制启用或账号已开启三方客户端安全密码，请在网页端生成安全密码，并在这里填写该密码，不要使用网页登录密码。',
+      '如果企业限制了三方客户端安全登录 IP，请确认当前网络 IP 已被允许。',
+      '账号请填写完整邮箱地址；如果专用密码忘记或不确定，请重新生成后再试。',
+      `服务器响应：${sanitizeImapResponse(line)}`
+    ].join(' ')
+  }
+
+  if (action === '登录认证' && input && isAliyunInput(input)) {
+    return [
+      '阿里邮箱登录认证失败：服务器拒绝了当前账号或三方客户端安全密码。',
+      '请确认已在阿里邮箱网页版开启 IMAP/SMTP 服务；如果账号已开启“三方客户端安全密码”，这里要填写该安全密码，不要使用网页登录密码。',
+      '账号请填写完整邮箱地址；如果安全密码忘记或不确定，请重新生成后再试。',
+      `服务器响应：${sanitizeImapResponse(line)}`
+    ].join(' ')
+  }
+
   if (action === 'OAuth 登录认证' && /AUTHENTICATE failed/i.test(line)) {
     return [
       'IMAP OAuth 登录认证失败：Outlook 拒绝了当前 Microsoft access token。',
@@ -441,6 +461,29 @@ function isNetease163Input(input: AccountCreateInput): boolean {
     input.providerKey === '163' ||
     input.imapHost.toLowerCase() === 'imap.163.com' ||
     input.email?.toLowerCase().endsWith('@163.com') === true
+  )
+}
+
+function isAliyunInput(input: AccountCreateInput): boolean {
+  const providerKey = input.providerKey.toLowerCase()
+  const imapHost = input.imapHost.toLowerCase()
+  const email = input.email?.toLowerCase() ?? ''
+
+  return (
+    providerKey === 'aliyun' ||
+    imapHost === 'imap.aliyun.com' ||
+    email.endsWith('@aliyun.com')
+  )
+}
+
+function isAliyunEnterpriseInput(input: AccountCreateInput): boolean {
+  const providerKey = input.providerKey.toLowerCase()
+  const imapHost = input.imapHost.toLowerCase()
+
+  return (
+    providerKey === 'aliyun_enterprise' ||
+    providerKey.includes('alibaba') ||
+    imapHost === 'imap.qiye.aliyun.com'
   )
 }
 

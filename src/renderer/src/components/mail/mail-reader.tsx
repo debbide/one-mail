@@ -6,7 +6,6 @@ import {
   Loader2,
   Paperclip,
   Reply,
-  ReplyAll,
   ShieldCheck,
   Trash2
 } from 'lucide-react'
@@ -64,7 +63,6 @@ type MailReaderProps = {
   onLoadBody: () => void
   onDownloadAttachment?: (attachment: Attachment) => void
   onReply?: () => void
-  onReplyAll?: () => void
   onForward?: () => void
   onDelete?: () => void
 }
@@ -80,7 +78,6 @@ export function MailReader({
   onLoadBody,
   onDownloadAttachment,
   onReply,
-  onReplyAll,
   onForward,
   onDelete
 }: MailReaderProps): React.JSX.Element {
@@ -95,8 +92,9 @@ export function MailReader({
   const externalContentAllowed =
     externalContentState.messageId === message.id && externalContentState.allowed
   const htmlSource = message.html ?? ''
-  const [preparedHtmlState, setPreparedHtmlState] =
-    React.useState<PreparedMailHtmlState | null>(null)
+  const [preparedHtmlState, setPreparedHtmlState] = React.useState<PreparedMailHtmlState | null>(
+    null
+  )
   const preparedHtml =
     canShowHtml &&
     preparedHtmlState?.messageId === message.id &&
@@ -196,7 +194,9 @@ export function MailReader({
                       value={formatAddress(displaySender, message.fromAddress)}
                     />
                     <MetaLine label={t('mail.reader.to')} value={displayRecipientAddress} />
-                    {message.cc ? <MetaLine label={t('mail.reader.cc')} value={message.cc} /> : null}
+                    {message.cc ? (
+                      <MetaLine label={t('mail.reader.cc')} value={message.cc} />
+                    ) : null}
                   </div>
                 </TooltipProvider>
               </div>
@@ -209,7 +209,11 @@ export function MailReader({
                 </div>
                 <TooltipProvider>
                   <div className="flex items-center gap-1">
-                    <MailActionButton label={t('mail.reader.reply')} disabled={actionPending} onClick={onReply}>
+                    <MailActionButton
+                      label={t('mail.reader.reply')}
+                      disabled={actionPending}
+                      onClick={onReply}
+                    >
                       {actionPending ? (
                         <Loader2 className="animate-spin" aria-hidden="true" />
                       ) : (
@@ -217,24 +221,21 @@ export function MailReader({
                       )}
                     </MailActionButton>
                     <MailActionButton
-                      label={t('mail.reader.replyAll')}
+                      label={t('mail.reader.forward')}
                       disabled={actionPending}
-                      onClick={onReplyAll}
+                      onClick={onForward}
                     >
-                      {actionPending ? (
-                        <Loader2 className="animate-spin" aria-hidden="true" />
-                      ) : (
-                        <ReplyAll aria-hidden="true" />
-                      )}
-                    </MailActionButton>
-                    <MailActionButton label={t('mail.reader.forward')} disabled={actionPending} onClick={onForward}>
                       {actionPending ? (
                         <Loader2 className="animate-spin" aria-hidden="true" />
                       ) : (
                         <Forward aria-hidden="true" />
                       )}
                     </MailActionButton>
-                    <MailActionButton label={t('common.delete')} disabled={deleting} onClick={onDelete}>
+                    <MailActionButton
+                      label={t('common.delete')}
+                      disabled={deleting}
+                      onClick={onDelete}
+                    >
                       {deleting ? (
                         <Loader2 className="animate-spin" aria-hidden="true" />
                       ) : (
@@ -248,7 +249,9 @@ export function MailReader({
           </section>
 
           {loading && !message.detailLoaded ? (
-            <section className="text-xs text-muted-foreground">{t('mail.reader.loadingDetails')}</section>
+            <section className="text-xs text-muted-foreground">
+              {t('mail.reader.loadingDetails')}
+            </section>
           ) : (
             <MessageBody
               message={message}
@@ -379,7 +382,7 @@ function MessageBody({
   }
 
   return (
-    <section className="prose-mail flex min-w-0 flex-col select-text text-sm leading-6 text-foreground">
+    <section className="prose-mail flex min-w-0 flex-col select-text text-sm text-foreground">
       {canShowHtml ? (
         <div
           className="mail-html min-h-40 select-text bg-background"
@@ -505,7 +508,7 @@ function AttachmentList({
 
 function MetaLine({ label, value }: { label: string; value: string }): React.JSX.Element {
   return (
-    <div className="grid min-w-0 grid-cols-[52px_minmax(0,1fr)] gap-3">
+    <div className="grid min-w-0 grid-cols-[3rem_minmax(0,1fr)] items-baseline ">
       <span>{label}:</span>
       <EllipsisTooltip alwaysShow className="min-w-0 truncate text-foreground" tooltip={value}>
         {value}

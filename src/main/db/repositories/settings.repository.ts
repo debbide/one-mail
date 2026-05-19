@@ -15,7 +15,8 @@ const settingsDefinition = {
   syncWindowDays: { key: 'sync_window_days', type: 'number' },
   openAtLogin: { key: 'open_at_login', type: 'boolean' },
   externalImagesBlocked: { key: 'external_images_blocked', type: 'boolean' },
-  locale: { key: 'locale', type: 'string' }
+  locale: { key: 'locale', type: 'string' },
+  lastAttachmentDownloadDir: { key: 'last_attachment_download_dir', type: 'string' }
 } as const
 
 type SettingRow = {
@@ -83,6 +84,23 @@ export function updateSettings(input: SettingsUpdateInput): AppSettings {
   return getSettings()
 }
 
+export function getLastAttachmentDownloadDir(): string | undefined {
+  const row = readSetting(settingsDefinition.lastAttachmentDownloadDir.key)
+  const directory = row?.setting_value.trim()
+  return directory ? directory : undefined
+}
+
+export function setLastAttachmentDownloadDir(directory: string): void {
+  const value = directory.trim()
+  if (!value) return
+
+  writeSetting(
+    settingsDefinition.lastAttachmentDownloadDir.key,
+    value,
+    settingsDefinition.lastAttachmentDownloadDir.type
+  )
+}
+
 function ensureDefaultSettings(): void {
   updateMissingSetting(
     settingsDefinition.syncIntervalMinutes.key,
@@ -120,6 +138,18 @@ function updateMissingSetting(key: string, value: string, valueType: string): vo
       `
     )
     .run({ key, value, valueType })
+}
+
+function readSetting(key: string): SettingRow | undefined {
+  return getDatabase()
+    .prepare<SettingRow>(
+      `
+      SELECT setting_key, setting_value, value_type
+      FROM onemail_app_settings
+      WHERE setting_key = :key
+      `
+    )
+    .get({ key })
 }
 
 function writeSetting(key: string, value: string, valueType: string): void {

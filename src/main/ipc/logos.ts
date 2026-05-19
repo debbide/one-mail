@@ -26,14 +26,26 @@ export async function getLogoDataUrl(domain: string): Promise<string | null> {
 }
 
 async function fetchLogo(domain: string): Promise<string | null> {
+  const urls = [
+    `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`,
+    `https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico`,
+    `https://${domain}/favicon.ico`
+  ]
+
+  for (const url of urls) {
+    const logo = await fetchLogoUrl(url).catch(() => null)
+    if (logo) return logo
+  }
+
+  return null
+}
+
+async function fetchLogoUrl(url: string): Promise<string | null> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), LOGO_TIMEOUT_MS)
 
   try {
-    const response = await fetch(
-      `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`,
-      { signal: controller.signal }
-    )
+    const response = await fetch(url, { signal: controller.signal })
     if (!response.ok) return null
 
     const contentType = response.headers.get('content-type') ?? 'image/png'

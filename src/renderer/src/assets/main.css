@@ -191,6 +191,59 @@
     pointer-events: none;
   }
 
+  .composer-body .is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: var(--muted-foreground);
+    pointer-events: none;
+  }
+
+  .composer-body,
+  .composer-body * {
+    user-select: text;
+  }
+
+  .composer-body p {
+    margin: 0 0 0.75rem;
+  }
+
+  .composer-body p:last-child {
+    margin-bottom: 0;
+  }
+
+  .composer-body ul,
+  .composer-body ol {
+    margin: 0 0 0.75rem 1.25rem;
+    padding-left: 1rem;
+  }
+
+  .composer-body ul {
+    list-style: disc;
+  }
+
+  .composer-body ol {
+    list-style: decimal;
+  }
+
+  .composer-body a {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .composer-body [style*='text-align: center'] {
+    text-align: center;
+  }
+
+  .composer-body [style*='text-align: right'] {
+    text-align: right;
+  }
+
+  .composer-body [style*='text-align: left'] {
+    text-align: left;
+  }
+
   [data-slot='resizable-handle'] {
     cursor: col-resize;
     touch-action: none;

@@ -819,9 +819,6 @@ export function MailboxWorkspace(): React.JSX.Element {
                   onReply={() => {
                     void openComposer('reply', selectedMessage)
                   }}
-                  onReplyAll={() => {
-                    void openComposer('reply_all', selectedMessage)
-                  }}
                   onForward={() => {
                     void openComposer('forward', selectedMessage)
                   }}

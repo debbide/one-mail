@@ -104,7 +104,7 @@ export function AddAccountForm({
       form.reset(defaultAccountFormValues)
       setKind(defaultAccountFormValues.kind)
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : t('account.add.saveError'))
+      setError(formatAccountSubmitError(submitError, t('account.add.saveError'), values.kind))
     } finally {
       setPending(false)
     }
@@ -119,12 +119,18 @@ export function AddAccountForm({
       <div className={bodyClassName}>
         <AccountAddGuideHint kind={kind} />
 
+        {error ? (
+          <FieldError className="rounded-md border border-destructive/25 bg-destructive/5 p-2 text-xs leading-5">
+            {error}
+          </FieldError>
+        ) : null}
+
         <AccountFormField id="account-kind" label={t('account.form.type')} required>
           <Select value={kind} onValueChange={handleKindChange} required>
             <SelectTrigger id="account-kind" aria-label={t('account.form.type')} className="w-full">
               <SelectValue placeholder={t('account.form.type')} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent viewportClassName="max-h-64 overflow-y-auto">
               <SelectGroup>
                 {providerPresets.map((preset) => (
                   <SelectItem key={preset.kind} value={preset.kind}>
@@ -138,7 +144,6 @@ export function AddAccountForm({
 
         <FieldGroup className="gap-2.5">{renderProviderForm(kind, form, t)}</FieldGroup>
 
-        {error ? <FieldError>{error}</FieldError> : null}
       </div>
 
       <div className={footerClassName}>
@@ -242,4 +247,24 @@ function optionalText(value?: string): string | undefined {
 function normalizePassword(value: string, authType: AccountCreateInput['authType']): string {
   const password = value.trim()
   return authType === 'app_password' ? password.replace(/\s+/g, '') : password
+}
+
+function formatAccountSubmitError(error: unknown, fallback: string, kind: AccountKind): string {
+  if (!(error instanceof Error)) return fallback
+
+  const message = error.message
+    .replace(/^Error invoking remote method '[^']+':\s*/i, '')
+    .replace(/^Error:\s*/i, '')
+    .trim()
+
+  if (kind === 'aliyunEnterprise' && /IMAP 登录认证失败：.*LOGIN failed/i.test(message)) {
+    return [
+      '阿里企业邮箱登录认证失败：服务器拒绝了当前账号或密码/专用密码。',
+      '请让管理员确认已允许使用三方客户端，并已为当前账号开启 IMAP/SMTP 服务；服务器为 imap.qiye.aliyun.com，SSL 端口 993。',
+      '如果企业强制启用或账号已开启三方客户端安全密码，请在网页端生成安全密码，并在这里填写该密码，不要使用网页登录密码。',
+      '如果企业限制了三方客户端安全登录 IP，请确认当前网络 IP 已被允许。'
+    ].join(' ')
+  }
+
+  return message
 }
