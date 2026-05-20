@@ -237,7 +237,7 @@ export function MailboxWorkspace(): React.JSX.Element {
     setLocale(normalizeLocale(data.settings.locale))
     setSystemInfo(data.systemInfo)
     setSelectedAccountId(data.selectedAccountId)
-    replaceMessages(data.messages)
+    replaceMessages(data.messages, { selectFirst: true })
   }, [replaceMessages])
 
   React.useEffect(() => {
@@ -254,7 +254,7 @@ export function MailboxWorkspace(): React.JSX.Element {
         setLocale(normalizeLocale(data.settings.locale))
         setSystemInfo(data.systemInfo)
         setSelectedAccountId(data.selectedAccountId)
-        replaceMessages(data.messages)
+        replaceMessages(data.messages, { selectFirst: true })
       } catch (loadError) {
         if (!cancelled) {
           setError(getErrorMessage(loadError, t('mailbox.loadDataError')))
@@ -359,16 +359,16 @@ export function MailboxWorkspace(): React.JSX.Element {
           await refreshAccounts()
           await refreshMessages(String(accountId), filters, searchKeyword)
           finishSyncing(accountKey, 'success', {
-          label: accountEmail,
-          startedAt,
-          message: t('mailbox.initialSyncComplete', {
-            email: accountEmail,
-            inserted: syncResult.insertedCount,
-            scanned: syncResult.scannedCount
+            label: accountEmail,
+            startedAt,
+            message: t('mailbox.initialSyncComplete', {
+              email: accountEmail,
+              inserted: syncResult.insertedCount,
+              scanned: syncResult.scannedCount
+            })
           })
         })
-      })
-      .catch((syncError) => {
+        .catch((syncError) => {
           const message = getErrorMessage(syncError, t('mailbox.syncAccountError'))
           const account = accounts.find((item) => item.accountId === accountId)
           if (shouldShowOutlookImapHelp(message, account)) {
@@ -404,7 +404,9 @@ export function MailboxWorkspace(): React.JSX.Element {
         .then(async (nextAccounts) => {
           setAccounts(nextAccounts)
           setSelectedAccountId(nextSelectedAccountId)
-          await refreshMessages(nextSelectedAccountId, filters, searchKeyword)
+          await refreshMessages(nextSelectedAccountId, filters, searchKeyword, {
+            selectFirst: true
+          })
         })
         .catch((refreshError) => {
           setError(getErrorMessage(refreshError, t('mailbox.refreshAccountError')))
@@ -671,9 +673,11 @@ export function MailboxWorkspace(): React.JSX.Element {
     if (!accountId) return
     navigateToMailboxRoute()
     setSelectedAccountId(accountId)
-    void refreshMessages(accountId, filters, searchKeyword).catch((refreshError) => {
-      setError(getErrorMessage(refreshError, t('mailbox.refreshMailError')))
-    })
+    void refreshMessages(accountId, filters, searchKeyword, { selectFirst: true }).catch(
+      (refreshError) => {
+        setError(getErrorMessage(refreshError, t('mailbox.refreshMailError')))
+      }
+    )
   }
 
   function handleSelectMessage(messageId: string): void {

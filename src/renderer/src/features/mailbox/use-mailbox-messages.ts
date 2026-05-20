@@ -25,6 +25,10 @@ type MessageListPageState = {
   loadingMore: boolean
 }
 
+type ReplaceMessagesOptions = {
+  selectFirst?: boolean
+}
+
 const MESSAGE_OPEN_SIDE_EFFECT_DELAY_MS = 80
 
 type UseMailboxMessagesInput = {
@@ -51,13 +55,14 @@ export function useMailboxMessages({
   loadingMessageId: string | null
   loadingBodyMessageId: string | null
   downloadingAttachmentIds: Set<number>
-  replaceMessages: (nextMessages: Message[]) => void
+  replaceMessages: (nextMessages: Message[], options?: ReplaceMessagesOptions) => void
   clearMessages: () => void
   removeMessages: (messageIds: string[]) => void
   refreshMessages: (
     accountId: string,
     nextFilters: MailFilterTag[],
-    nextSearchKeyword: string
+    nextSearchKeyword: string,
+    options?: ReplaceMessagesOptions
   ) => Promise<void>
   selectMessage: (messageId: string) => void
   loadMoreMessages: () => void
@@ -95,24 +100,27 @@ export function useMailboxMessages({
     return true
   }, [])
 
-  const replaceMessages = React.useCallback((nextMessages: Message[]): void => {
-    loadMoreRequestTokenRef.current += 1
-    loadingMoreMessagesRef.current = false
-    setMessages((current) => {
-      const currentById = new Map(current.map((message) => [message.id, message]))
-      return nextMessages.map((message) =>
-        preserveLoadedMessage(message, currentById.get(message.id))
-      )
-    })
-    setMessagePage({
-      hasMore: nextMessages.length === MESSAGE_LIST_PAGE_SIZE,
-      loadingMore: false
-    })
-    setSelectedMessageId((current) => {
-      if (nextMessages.some((message) => message.id === current)) return current
-      return nextMessages[0]?.id ?? ''
-    })
-  }, [])
+  const replaceMessages = React.useCallback(
+    (nextMessages: Message[], options: ReplaceMessagesOptions = {}): void => {
+      loadMoreRequestTokenRef.current += 1
+      loadingMoreMessagesRef.current = false
+      setMessages((current) => {
+        const currentById = new Map(current.map((message) => [message.id, message]))
+        return nextMessages.map((message) =>
+          preserveLoadedMessage(message, currentById.get(message.id))
+        )
+      })
+      setMessagePage({
+        hasMore: nextMessages.length === MESSAGE_LIST_PAGE_SIZE,
+        loadingMore: false
+      })
+      setSelectedMessageId((current) => {
+        if (nextMessages.some((message) => message.id === current)) return current
+        return options.selectFirst ? (nextMessages[0]?.id ?? '') : ''
+      })
+    },
+    []
+  )
 
   const clearMessages = React.useCallback((): void => {
     loadMoreRequestTokenRef.current += 1
@@ -142,7 +150,8 @@ export function useMailboxMessages({
     async (
       accountId: string,
       nextFilters: MailFilterTag[],
-      nextSearchKeyword: string
+      nextSearchKeyword: string,
+      options: ReplaceMessagesOptions = {}
     ): Promise<void> => {
       loadMoreRequestTokenRef.current += 1
       loadingMoreMessagesRef.current = false
@@ -160,7 +169,7 @@ export function useMailboxMessages({
           nextSearchKeyword
         )
       )
-      replaceMessages(nextMessages)
+      replaceMessages(nextMessages, options)
     },
     [clearMessages, replaceMessages]
   )
@@ -359,12 +368,9 @@ export function useMailboxMessages({
     [downloadingAttachmentIds, reloadMessageDetail, setError]
   )
 
-  const selectMessage = React.useCallback(
-    (messageId: string): void => {
-      setSelectedMessageId(messageId)
-    },
-    []
-  )
+  const selectMessage = React.useCallback((messageId: string): void => {
+    setSelectedMessageId(messageId)
+  }, [])
 
   React.useEffect(() => {
     if (!selectedMessage || loading) return
