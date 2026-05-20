@@ -41,6 +41,7 @@ import {
   onAppUpdateStatus,
   onMailboxChanged,
   openAddAccountWindow,
+  openExternalUrl,
   reauthorizeAccount,
   removeAccount,
   revealDatabaseInFileManager,
@@ -52,6 +53,7 @@ import {
   updateAccount
 } from '@renderer/lib/api'
 import { normalizeLocale, useI18n } from '@renderer/lib/i18n'
+import { ONEMAIL_HOMEPAGE_URL, hasAvailableUpdate } from '@renderer/lib/update-status'
 import type { OutboxMessage } from '@renderer/lib/api'
 import { toast } from 'sonner'
 import { NoAccountsBody, StatusBar, TitleBar } from './mailbox-chrome'
@@ -849,6 +851,10 @@ export function MailboxWorkspace(): React.JSX.Element {
           void revealDatabaseInFileManager()
         }}
         onOpenVersion={() => {
+          if (hasAvailableUpdate(updateStatus)) {
+            void openExternalUrl(ONEMAIL_HOMEPAGE_URL)
+            return
+          }
           setSettingsInitialSection('about')
           setDialogKind('settings')
         }}
@@ -901,6 +907,7 @@ export function MailboxWorkspace(): React.JSX.Element {
         open={dialogKind === 'settings'}
         settings={settings}
         systemInfo={systemInfo}
+        updateStatus={updateStatus}
         initialSection={settingsInitialSection}
         onOpenChange={(open) => setDialogKind(open ? 'settings' : null)}
         onSubmit={handleUpdateSettings}

@@ -21,6 +21,8 @@ import {
 import type { SyncNotice } from './use-sync-feedback'
 import { formatSyncNotice } from './use-sync-feedback'
 import { useI18n } from '@renderer/lib/i18n'
+import { cn } from '@renderer/lib/utils'
+import { hasAvailableUpdate } from '@renderer/lib/update-status'
 
 export function NoAccountsBody({
   importingSql,
@@ -126,6 +128,14 @@ export function StatusBar({
   const { t } = useI18n()
   const syncText = formatSyncNotice(syncNotice, t)
   const updateText = formatUpdateStatus(updateStatus, t)
+  const hasUpdate = hasAvailableUpdate(updateStatus)
+  const versionLabel = systemInfo?.appVersion ? `v${systemInfo.appVersion}` : '...'
+  const versionTitle =
+    hasUpdate && updateStatus?.latestVersion
+      ? t('status.openHomepageForUpdate', { version: updateStatus.latestVersion })
+      : hasUpdate
+        ? t('status.openHomepageForUpdateGeneric')
+        : t('status.openRepository')
   const databasePath = systemInfo?.databasePath
   const databaseLabel = databasePath ? getFileName(databasePath) : t('common.loading')
 
@@ -172,12 +182,16 @@ export function StatusBar({
         <span>{t('status.cacheDays', { days: settings?.syncWindowDays ?? 90 })}</span>
         <button
           type="button"
-          className="outline-none transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60"
-          aria-label={t('status.openRepository')}
+          className={cn(
+            'outline-none transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60',
+            hasUpdate && 'font-medium text-warning hover:text-warning'
+          )}
+          title={versionTitle}
+          aria-label={versionTitle}
           disabled={!systemInfo?.appVersion}
           onClick={onOpenVersion}
         >
-          v{systemInfo?.appVersion ?? '...'}
+          {versionLabel}
         </button>
       </div>
     </footer>

@@ -46,14 +46,21 @@ import {
 } from '@renderer/components/ui/select'
 import { Switch } from '@renderer/components/ui/switch'
 import { Alert, AlertDescription, AlertTitle } from '@renderer/components/ui/alert'
-import type { AppSettings, SettingsUpdateInput, SystemInfo } from '../../../../shared/types'
+import type {
+  AppSettings,
+  AppUpdateStatus,
+  SettingsUpdateInput,
+  SystemInfo
+} from '../../../../shared/types'
 import { cn } from '@renderer/lib/utils'
 import { useI18n, type TranslationKey } from '@renderer/lib/i18n'
+import { ONEMAIL_HOMEPAGE_URL, hasAvailableUpdate } from '@renderer/lib/update-status'
 
 type SettingsDialogProps = {
   open: boolean
   settings: AppSettings | null
   systemInfo: SystemInfo | null
+  updateStatus: AppUpdateStatus | null
   initialSection?: SettingsSection
   onOpenChange: (open: boolean) => void
   onSubmit: (input: SettingsUpdateInput) => Promise<void>
@@ -101,6 +108,7 @@ export function SettingsDialog({
   open,
   settings,
   systemInfo,
+  updateStatus,
   initialSection = 'general',
   onOpenChange,
   onSubmit,
@@ -334,7 +342,7 @@ export function SettingsDialog({
               onImport={handleImport}
             />
           ) : (
-            <AboutSettings systemInfo={systemInfo} />
+            <AboutSettings systemInfo={systemInfo} updateStatus={updateStatus} />
           )}
         </div>
       </div>
@@ -505,9 +513,22 @@ function BackupSettings({
   )
 }
 
-function AboutSettings({ systemInfo }: { systemInfo: SystemInfo | null }): React.JSX.Element {
+function AboutSettings({
+  systemInfo,
+  updateStatus
+}: {
+  systemInfo: SystemInfo | null
+  updateStatus: AppUpdateStatus | null
+}): React.JSX.Element {
   const { t } = useI18n()
   const version = systemInfo?.appVersion ? `v${systemInfo.appVersion}` : t('common.loading')
+  const hasUpdate = hasAvailableUpdate(updateStatus)
+  const versionTitle =
+    hasUpdate && updateStatus?.latestVersion
+      ? t('settings.about.updateVersionTooltip', { version: updateStatus.latestVersion })
+      : hasUpdate
+        ? t('settings.about.updateAvailable')
+        : undefined
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-[540px] flex-col gap-3 p-3 sm:p-4">
@@ -515,7 +536,24 @@ function AboutSettings({ systemInfo }: { systemInfo: SystemInfo | null }): React
         <SettingRow
           icon={BadgeInfo}
           title="OneMail"
-          description={t('settings.about.description', { version })}
+          description={
+            <span>
+              {t('settings.about.versionPrefix')}{' '}
+              {hasUpdate ? (
+                <button
+                  type="button"
+                  className="rounded-sm font-medium text-warning outline-none transition-colors hover:text-warning focus-visible:ring-2 focus-visible:ring-ring"
+                  title={versionTitle}
+                  onClick={() => void openExternalUrl(ONEMAIL_HOMEPAGE_URL)}
+                >
+                  {version}
+                </button>
+              ) : (
+                <span>{version}</span>
+              )}
+              {t('settings.about.versionSuffix')}
+            </span>
+          }
           control={
             <Button
               variant="outline"
@@ -571,7 +609,7 @@ function SettingRow({
 }: {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
   title: string
-  description: string
+  description: React.ReactNode
   control?: React.ReactNode
   error?: string
   invalid?: boolean
