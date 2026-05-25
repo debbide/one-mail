@@ -24,6 +24,12 @@ function createWindow(initialRoute = '/'): BrowserWindow {
   }
 
   const windowIcon = process.platform === 'win32' ? windowsIcon : appIcon
+  const titleBarOptions =
+    process.platform === 'darwin'
+      ? ({ titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 14 } } as const)
+      : process.platform === 'win32'
+        ? ({ titleBarStyle: 'hidden', titleBarOverlay: { height: 40 } } as const)
+        : ({ titleBarStyle: 'hidden' } as const)
 
   // Create the browser window.
   const nextWindow = new BrowserWindow({
@@ -34,8 +40,7 @@ function createWindow(initialRoute = '/'): BrowserWindow {
     title: 'OneMail',
     show: false,
     autoHideMenuBar: true,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
-    trafficLightPosition: { x: 16, y: 14 },
+    ...titleBarOptions,
     ...(process.platform !== 'darwin' ? { icon: windowIcon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

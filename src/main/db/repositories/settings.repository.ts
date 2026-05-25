@@ -7,7 +7,7 @@ const defaultSettings: AppSettings = {
   syncWindowDays: 90,
   openAtLogin: false,
   externalImagesBlocked: true,
-  locale: 'en-US'
+  locale: 'zh-CN'
 }
 
 const settingsDefinition = {

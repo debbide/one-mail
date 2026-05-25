@@ -14,6 +14,13 @@ export function openAddAccountWindow(): void {
   }
 
   const windowIcon = process.platform === 'win32' ? windowsIcon : appIcon
+  const titleBarOptions =
+    process.platform === 'darwin'
+      ? ({ titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 14 } } as const)
+      : process.platform === 'win32'
+        ? ({ titleBarStyle: 'hidden', titleBarOverlay: { height: 40 } } as const)
+        : ({ titleBarStyle: 'hidden' } as const)
+
   const nextWindow = new BrowserWindow({
     width: 440,
     height: 460,
@@ -25,8 +32,7 @@ export function openAddAccountWindow(): void {
     show: false,
     autoHideMenuBar: true,
     resizable: false,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
-    trafficLightPosition: { x: 16, y: 14 },
+    ...titleBarOptions,
     ...(process.platform !== 'darwin' ? { icon: windowIcon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

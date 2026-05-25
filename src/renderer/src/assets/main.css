@@ -33,6 +33,8 @@
 
 :root {
   --radius: 0.625rem;
+  --app-titlebar-left-offset: 1.25rem;
+  --app-window-controls-width: 0px;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -54,6 +56,23 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.5907 0.2061 256.79);
+}
+
+:root[data-platform='darwin'] {
+  --app-titlebar-left-offset: 6rem;
+}
+
+:root[data-platform='win32'] {
+  --app-window-controls-width: 138px;
+}
+
+@supports (padding-right: env(titlebar-area-width)) {
+  :root[data-platform='win32'] {
+    --app-window-controls-width: max(
+      138px,
+      calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))
+    );
+  }
 }
 
 .dark {
@@ -108,6 +127,11 @@
   .app-drag-region {
     -webkit-app-region: drag;
     cursor: grab;
+  }
+
+  .app-titlebar {
+    padding-left: var(--app-titlebar-left-offset);
+    padding-right: calc(1.25rem + var(--app-window-controls-width));
   }
 
   .app-drag-region:active {

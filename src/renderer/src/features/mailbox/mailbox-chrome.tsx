@@ -68,7 +68,7 @@ export function TitleBar({
   const { t } = useI18n()
 
   return (
-    <header className="app-drag-region flex h-10 shrink-0 items-center justify-end border-b bg-card/60 px-5 pl-24">
+    <header className="app-titlebar app-drag-region flex h-10 shrink-0 items-center justify-end border-b bg-card/60">
       <TooltipProvider>
         <div className="app-no-drag flex items-center gap-1">
           <Tooltip>
@@ -168,11 +168,7 @@ export function StatusBar({
           </span>
         ) : null}
         {updateStatus?.state === 'downloaded' ? (
-          <Button
-            className="h-5 rounded-sm px-1.5 text-xs"
-            size="xs"
-            onClick={onInstallUpdate}
-          >
+          <Button className="h-5 rounded-sm px-1.5 text-xs" size="xs" onClick={onInstallUpdate}>
             <RotateCcw data-icon="inline-start" />
             {t('status.updateRestart')}
           </Button>
