@@ -22,6 +22,7 @@ import type {
   AccountUpdateInput,
   AppSettings,
   AppUpdateStatus,
+  BackupImportResult,
   SettingsUpdateInput,
   SystemInfo
 } from '../../../../shared/types'
@@ -77,6 +78,16 @@ function normalizeRouteId(value: string | undefined): string | undefined {
   const text = value?.trim()
   if (!text) return undefined
   return decodeURIComponent(text)
+}
+
+function formatImportResultMessage(
+  result: BackupImportResult,
+  t: ReturnType<typeof useI18n>['t']
+): string {
+  return t('settings.backup.importedSummary', {
+    accounts: result.accountCount ?? 0,
+    messages: result.messageCount ?? 0
+  })
 }
 
 export function MailboxWorkspace(): React.JSX.Element {
@@ -242,8 +253,11 @@ export function MailboxWorkspace(): React.JSX.Element {
     setLocale(normalizeLocale(data.settings.locale))
     setSystemInfo(data.systemInfo)
     setSelectedAccountId(data.selectedAccountId)
+    setFilters([])
+    setSearchKeyword('')
+    clearSelection()
     replaceMessages(data.messages, { selectFirst: true })
-  }, [replaceMessages, setLocale])
+  }, [clearSelection, replaceMessages, setLocale])
 
   React.useEffect(() => {
     let cancelled = false
@@ -604,6 +618,9 @@ export function MailboxWorkspace(): React.JSX.Element {
       const result = await importSqlBackup()
       if (result.imported) {
         await reloadInitialData()
+        toast.success(formatImportResultMessage(result, t))
+      } else {
+        toast(t('settings.backup.importCanceled'))
       }
     } catch (importError) {
       setError(getErrorMessage(importError, t('mailbox.importSqlError')))
@@ -765,6 +782,7 @@ export function MailboxWorkspace(): React.JSX.Element {
     <main className="flex h-screen min-h-screen flex-col overflow-hidden bg-background text-foreground">
       <div className="relative shrink-0">
         <TitleBar
+          platform={systemInfo?.platform}
           onAddAccount={handleOpenAddAccountWindow}
           onOpenSettings={() => {
             setSettingsInitialSection('general')
@@ -873,6 +891,7 @@ export function MailboxWorkspace(): React.JSX.Element {
                   recipientAddress={selectedMessageAccount?.address ?? selectedAccount.address}
                   loading={!selectedMessage.detailLoaded || loadingMessageId === selectedMessage.id}
                   loadingBody={loadingBodyMessageId === selectedMessage.id}
+                  externalImagesBlocked={settings?.externalImagesBlocked ?? true}
                   downloadingAttachmentIds={downloadingAttachmentIds}
                   actionPending={composerPending}
                   deleting={deletingMessageIds.has(selectedMessage.id)}

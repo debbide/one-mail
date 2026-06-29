@@ -54,6 +54,7 @@ import { Alert, AlertDescription, AlertTitle } from '@renderer/components/ui/ale
 import type {
   AppSettings,
   AppUpdateStatus,
+  BackupImportResult,
   BackupSyncSettings,
   SettingsUpdateInput,
   SystemInfo
@@ -86,6 +87,7 @@ type SettingsFormValues = {
   syncIntervalMinutes: number
   syncWindowDays: number
   openAtLogin: boolean
+  externalImagesBlocked: boolean
   locale: 'zh-CN' | 'en-US'
 }
 
@@ -166,6 +168,7 @@ export function SettingsDialog({
             syncIntervalMinutes: currentValues.syncIntervalMinutes,
             syncWindowDays: currentValues.syncWindowDays,
             openAtLogin: currentValues.openAtLogin,
+            externalImagesBlocked: currentValues.externalImagesBlocked,
             locale: currentValues.locale
           })
           lastSavedValuesRef.current = currentValues
@@ -297,7 +300,7 @@ export function SettingsDialog({
       const result = await importSqlBackup()
       setBackupMessage(
         result.imported
-          ? { label: t('settings.backup.imported'), path: result.filePath }
+          ? { label: formatImportResultMessage(result, false, t), path: result.filePath }
           : { label: t('settings.backup.importCanceled') }
       )
       if (result.imported) {
@@ -329,7 +332,7 @@ export function SettingsDialog({
       const result = await downloadBackupSync()
       setBackupMessage(
         result.imported
-          ? { label: t('settings.backup.remoteDownloaded'), path: result.remotePath }
+          ? { label: formatImportResultMessage(result, true, t), path: result.remotePath }
           : { label: t('settings.backup.importCanceled') }
       )
       if (result.imported) {
@@ -486,6 +489,26 @@ function GeneralSettingsForm({
           }
           error={form.formState.errors.syncWindowDays?.message}
           invalid={Boolean(form.formState.errors.syncWindowDays)}
+        />
+
+        <Controller
+          control={form.control}
+          name="externalImagesBlocked"
+          render={({ field }) => (
+            <SettingRow
+              icon={ShieldCheck}
+              title={t('settings.externalContent.title')}
+              description={t('settings.externalContent.description')}
+              control={
+                <Switch
+                  id="external-images-blocked"
+                  size="sm"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              }
+            />
+          )}
         />
 
         <Controller
@@ -757,6 +780,22 @@ function getBackupSyncSettingsKey(settings: BackupSyncSettings | null): string {
   return 'none'
 }
 
+function formatImportResultMessage(
+  result: BackupImportResult,
+  remote: boolean,
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string
+): string {
+  const values = {
+    accounts: result.accountCount ?? 0,
+    messages: result.messageCount ?? 0
+  }
+
+  return t(
+    remote ? 'settings.backup.remoteDownloadedSummary' : 'settings.backup.importedSummary',
+    values
+  )
+}
+
 function BackupTextField({
   id,
   label,
@@ -998,6 +1037,7 @@ function createSettingsSchema(t: (key: TranslationKey) => string) {
       .min(1, t('settings.syncWindow.errorMin'))
       .max(3650, t('settings.syncWindow.errorMax')),
     openAtLogin: z.boolean(),
+    externalImagesBlocked: z.boolean(),
     locale: z.enum(['zh-CN', 'en-US'])
   })
 }
@@ -1007,6 +1047,7 @@ function toFormValues(settings: AppSettings | null): SettingsFormValues {
     syncIntervalMinutes: settings?.syncIntervalMinutes ?? 15,
     syncWindowDays: settings?.syncWindowDays ?? 90,
     openAtLogin: settings?.openAtLogin === true,
+    externalImagesBlocked: settings?.externalImagesBlocked !== false,
     locale: settings?.locale === 'en-US' ? 'en-US' : 'zh-CN'
   }
 }
@@ -1016,6 +1057,7 @@ function areSettingsEqual(first: SettingsFormValues, second: SettingsFormValues)
     first.syncIntervalMinutes === second.syncIntervalMinutes &&
     first.syncWindowDays === second.syncWindowDays &&
     first.openAtLogin === second.openAtLogin &&
+    first.externalImagesBlocked === second.externalImagesBlocked &&
     first.locale === second.locale
   )
 }

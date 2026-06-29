@@ -69,12 +69,14 @@ export async function importDatabaseSqlBackup(): Promise<BackupImportResult> {
 
   validateSqlBackup(sql, fileInfo)
   restoreDatabaseSql(sql, fileInfo.key)
+  const stats = getRestoredDatabaseStats()
 
   return {
     imported: true,
     filePath,
     importedAt: new Date().toISOString(),
-    exportedAt: fileInfo.exportedAt
+    exportedAt: fileInfo.exportedAt,
+    ...stats
   }
 }
 
@@ -86,12 +88,29 @@ export function importDatabaseSqlBackupContent(
 
   validateSqlBackup(sql, fileInfo)
   restoreDatabaseSql(sql, fileInfo.key)
+  const stats = getRestoredDatabaseStats()
 
   return {
     imported: true,
     filePath: sourceName,
     importedAt: new Date().toISOString(),
-    exportedAt: fileInfo.exportedAt
+    exportedAt: fileInfo.exportedAt,
+    ...stats
+  }
+}
+
+function getRestoredDatabaseStats(): Pick<BackupImportResult, 'accountCount' | 'messageCount'> {
+  const db = getDatabase()
+  const accountRow = db
+    .prepare<{ count: number }>('SELECT COUNT(*) AS count FROM onemail_mail_accounts')
+    .get()
+  const messageRow = db
+    .prepare<{ count: number }>('SELECT COUNT(*) AS count FROM onemail_mail_messages')
+    .get()
+
+  return {
+    accountCount: Number(accountRow?.count ?? 0),
+    messageCount: Number(messageRow?.count ?? 0)
   }
 }
 

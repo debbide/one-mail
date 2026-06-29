@@ -57,6 +57,7 @@ type MailReaderProps = {
   recipientAddress: string
   loading?: boolean
   loadingBody?: boolean
+  externalImagesBlocked?: boolean
   downloadingAttachmentIds?: Set<number>
   actionPending?: boolean
   deleting?: boolean
@@ -72,6 +73,7 @@ export function MailReader({
   recipientAddress,
   loading = false,
   loadingBody = false,
+  externalImagesBlocked = true,
   downloadingAttachmentIds,
   actionPending = false,
   deleting = false,
@@ -90,7 +92,8 @@ export function MailReader({
     messageId: message.id
   })
   const externalContentAllowed =
-    externalContentState.messageId === message.id && externalContentState.allowed
+    !externalImagesBlocked ||
+    (externalContentState.messageId === message.id && externalContentState.allowed)
   const htmlSource = message.html ?? ''
   const [preparedHtmlState, setPreparedHtmlState] = React.useState<PreparedMailHtmlState | null>(
     null

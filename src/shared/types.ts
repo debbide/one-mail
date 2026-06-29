@@ -414,6 +414,8 @@ export type BackupImportResult = {
   filePath?: string
   importedAt?: string
   exportedAt?: number
+  accountCount?: number
+  messageCount?: number
 }
 
 export type SystemInfo = {

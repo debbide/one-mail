@@ -59,48 +59,80 @@ export function NoAccountsBody({
 }
 
 export function TitleBar({
+  platform,
   onAddAccount,
   onOpenSettings
 }: {
+  platform?: SystemInfo['platform'] | null
   onAddAccount: () => void
   onOpenSettings: () => void
 }): React.JSX.Element {
   const { t } = useI18n()
+  const showLeftWindowActions = Boolean(platform && platform !== 'darwin')
 
   return (
-    <header className="app-titlebar app-drag-region flex h-10 shrink-0 items-center justify-end border-b bg-card/60">
+    <header
+      className={cn(
+        'app-titlebar app-drag-region flex h-10 shrink-0 items-center border-b bg-card/60',
+        showLeftWindowActions ? 'justify-between' : 'justify-end'
+      )}
+    >
       <TooltipProvider>
+        {showLeftWindowActions ? (
+          <div className="app-no-drag flex items-center gap-1">
+            <SettingsButton label={t('common.settings')} onClick={onOpenSettings} />
+            <ThemeToggleButton />
+          </div>
+        ) : null}
         <div className="app-no-drag flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                aria-label={t('common.addAccount')}
-                onClick={onAddAccount}
-              >
-                <Plus aria-hidden="true" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">{t('common.addAccount')}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                aria-label={t('common.settings')}
-                onClick={onOpenSettings}
-              >
-                <Settings aria-hidden="true" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">{t('common.settings')}</TooltipContent>
-          </Tooltip>
-          <ThemeToggleButton />
+          <AddAccountButton label={t('common.addAccount')} onClick={onAddAccount} />
+          {!showLeftWindowActions ? (
+            <>
+              <SettingsButton label={t('common.settings')} onClick={onOpenSettings} />
+              <ThemeToggleButton />
+            </>
+          ) : null}
         </div>
       </TooltipProvider>
     </header>
+  )
+}
+
+function AddAccountButton({
+  label,
+  onClick
+}: {
+  label: string
+  onClick: () => void
+}): React.JSX.Element {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="outline" size="icon-sm" aria-label={label} onClick={onClick}>
+          <Plus aria-hidden="true" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+function SettingsButton({
+  label,
+  onClick
+}: {
+  label: string
+  onClick: () => void
+}): React.JSX.Element {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="outline" size="icon-sm" aria-label={label} onClick={onClick}>
+          <Settings aria-hidden="true" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
   )
 }
 

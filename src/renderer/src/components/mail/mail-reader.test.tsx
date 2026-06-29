@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import type { Message } from './types'
@@ -61,6 +61,44 @@ describe('MailReader metadata', () => {
       'title',
       '真实收件人 <real-recipient@example.com>'
     )
+  })
+})
+
+describe('MailReader remote content', () => {
+  it('shows full remote content automatically when remote blocking is disabled', async () => {
+    const { container } = renderMailReader(
+      <MailReader
+        message={createMessage({
+          html: '<p>Hello</p><img src="https://example.com/tracker.png">',
+          bodyLoaded: true
+        })}
+        recipientAddress="account@example.com"
+        externalImagesBlocked={false}
+        onLoadBody={() => {}}
+      />
+    )
+
+    await waitFor(() => {
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        'https://example.com/tracker.png'
+      )
+    })
+    expect(screen.queryByText('加载完整内容')).not.toBeInTheDocument()
+  })
+
+  it('keeps remote content behind the full-content action by default', async () => {
+    renderMailReader(
+      <MailReader
+        message={createMessage({
+          html: '<p>Hello</p><img src="https://example.com/tracker.png">',
+          bodyLoaded: true
+        })}
+        recipientAddress="account@example.com"
+        onLoadBody={() => {}}
+      />
+    )
+
+    expect(await screen.findByText('加载完整内容')).toBeInTheDocument()
   })
 })
 
