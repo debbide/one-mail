@@ -27,6 +27,7 @@ import {
 } from './services/tray'
 
 configureDevelopmentUserData()
+configurePortableUserData()
 installRuntimeErrorGuards()
 
 let mainWindow: BrowserWindow | null = null
@@ -38,6 +39,20 @@ function configureDevelopmentUserData(): void {
   mkdirSync(developmentUserDataPath, { recursive: true })
   app.setPath('userData', developmentUserDataPath)
   app.setPath('sessionData', developmentUserDataPath)
+}
+
+function configurePortableUserData(): void {
+  if (is.dev) return
+  if (process.env.PORTABLE_EXECUTABLE_DIR) {
+    try {
+      const portableDataPath = join(process.env.PORTABLE_EXECUTABLE_DIR, 'data')
+      mkdirSync(portableDataPath, { recursive: true })
+      app.setPath('userData', portableDataPath)
+      app.setPath('sessionData', portableDataPath)
+    } catch (e) {
+      console.error('Failed to create portable data directory:', e)
+    }
+  }
 }
 
 function createWindow(initialRoute = '/'): BrowserWindow {
