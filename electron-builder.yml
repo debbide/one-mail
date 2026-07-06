@@ -59,6 +59,4 @@ appImage:
 npmRebuild: false
 publish:
   provider: github
-  owner: zhihui-hu
-  repo: one-mail
   releaseType: release
