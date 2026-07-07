@@ -19,7 +19,6 @@ OneMail 是一个本地优先的桌面邮件客户端，使用 Electron + React 
 
 **语言**：中文 | [English](./README.en.md)
 
-**当前项目主页**：[https://github.com/debbide/one-mail](https://github.com/debbide/one-mail)
 **原项目主页**：[https://github.com/zhihui-hu/one-mail](https://github.com/zhihui-hu/one-mail)
 
 ## 🚀 新增高级特性 (New Features)
