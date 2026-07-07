@@ -120,13 +120,63 @@ export function MailReader({
 
     setIsTranslating(true)
     try {
-      // If we have HTML, translate the HTML to preserve formatting. Otherwise use plain text.
-      const textToTranslate = preparedHtml ? preparedHtml.html : message.body.join('\n\n')
-      const result = await window.api.translate.text({
-        text: textToTranslate,
-        targetLang: locale === 'en-US' ? 'en' : 'zh-CN'
-      })
-      setTranslatedBody(result.text)
+      // If we have HTML, use DOM traversal to translate text nodes only
+      // This preserves all CSS styles, attributes, and tags perfectly.
+      if (preparedHtml) {
+        const parser = new DOMParser()
+        const doc = parser.parseFromString(preparedHtml.html, 'text/html')
+        const walk = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null)
+        const textNodes: Text[] = []
+        let node
+        while ((node = walk.nextNode())) {
+          if (node.nodeValue && node.nodeValue.trim().length > 0) {
+            if (node.parentElement && ['SCRIPT', 'STYLE'].includes(node.parentElement.tagName)) continue
+            textNodes.push(node as Text)
+          }
+        }
+
+        if (textNodes.length === 0) {
+          setTranslatedBody(preparedHtml.html)
+          setIsTranslating(false)
+          return
+        }
+
+        // Batch text nodes to avoid 4000 char limits
+        const batches: Text[][] = []
+        let currentBatch: Text[] = []
+        let currentLen = 0
+        for (const n of textNodes) {
+          const len = n.nodeValue!.length + 15 // approx length of <t></t>
+          if (currentLen + len > 3000 && currentBatch.length > 0) {
+            batches.push(currentBatch)
+            currentBatch = []
+            currentLen = 0
+          }
+          currentBatch.push(n)
+          currentLen += len
+        }
+        if (currentBatch.length > 0) batches.push(currentBatch)
+
+        const targetLang = locale === 'en-US' ? 'en' : 'zh-CN'
+        for (const batch of batches) {
+          const textToTranslate = batch.map(n => `<t>${n.nodeValue}</t>`).join('')
+          const result = await window.api.translate.text({ text: textToTranslate, targetLang })
+          const resDoc = parser.parseFromString(result.text, 'text/html')
+          const translatedTags = Array.from(resDoc.querySelectorAll('t'))
+          
+          for (let i = 0; i < Math.min(batch.length, translatedTags.length); i++) {
+            batch[i].nodeValue = translatedTags[i].textContent || batch[i].nodeValue
+          }
+        }
+        
+        setTranslatedBody(doc.body.innerHTML)
+      } else {
+        const result = await window.api.translate.text({
+          text: message.body.join('\n\n'),
+          targetLang: locale === 'en-US' ? 'en' : 'zh-CN'
+        })
+        setTranslatedBody(result.text)
+      }
     } catch (error) {
       console.error('Translation failed', error)
     } finally {
