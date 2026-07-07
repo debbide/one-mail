@@ -323,9 +323,16 @@ async function signedS3Request(
     amzDate
   })
 
+  // Electron 的 net.fetch 严格遵循 fetch 规范，视 host 为禁止人为修改的系统保留请求头。
+  // 强行传入会导致底层直接抛出 net::ERR_INVALID_ARGUMENT 且请求无法发出。
+  // 虽然 AWS V4 签名必须对 host 字段进行签名，但我们在生成签名后，必须在传给 fetch 之前将其从 headers 中删去，
+  // 否则就会触发上面的错误。系统在真正发送请求时会自动补上完全相同的 Host 头，所以签名验证依然能完美通过。
+  const fetchHeaders = { ...headers }
+  delete fetchHeaders.host
+
   return net.fetch(url.toString(), {
     method,
-    headers,
+    headers: fetchHeaders,
     body: method === 'PUT' ? body : undefined
   })
 }
