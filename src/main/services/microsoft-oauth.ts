@@ -1,5 +1,6 @@
-import { BrowserWindow, clipboard } from 'electron'
+import { BrowserWindow, clipboard, net } from 'electron'
 import { createHash, randomBytes } from 'node:crypto'
+import { applyProxyToSession } from './proxy'
 import http from 'node:http'
 import { URLSearchParams } from 'node:url'
 import type { OAuthAuthorizationMode } from '../../shared/types'
@@ -293,6 +294,8 @@ function createMicrosoftAuthorizationWindow(): BrowserWindow {
     return { action: 'deny' }
   })
 
+  applyProxyToSession(authWindow.webContents.session)
+
   return authWindow
 }
 
@@ -340,7 +343,7 @@ async function refreshMicrosoftToken(
 }
 
 async function postMicrosoftToken(params: URLSearchParams): Promise<MicrosoftTokenResponse> {
-  const response = await fetch(`${MICROSOFT_AUTHORITY}/token`, {
+  const response = await net.fetch(`${MICROSOFT_AUTHORITY}/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: params.toString()

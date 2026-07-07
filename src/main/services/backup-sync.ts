@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomUUID } from 'node:crypto'
+import { net } from 'electron'
 import type {
   BackupSyncDownloadResult,
   BackupSyncSettings,
@@ -121,7 +122,7 @@ async function testWebDavBackup(
   let actionError: unknown
 
   try {
-    const putResponse = await fetch(testUrl, {
+    const putResponse = await net.fetch(testUrl, {
       method: 'PUT',
       headers: buildWebDavHeaders(settings, {
         'content-type': 'text/plain; charset=utf-8'
@@ -134,7 +135,7 @@ async function testWebDavBackup(
     }
     created = true
 
-    const getResponse = await fetch(testUrl, {
+    const getResponse = await net.fetch(testUrl, {
       method: 'GET',
       headers: buildWebDavHeaders(settings)
     })
@@ -152,7 +153,7 @@ async function testWebDavBackup(
   if (created) {
     await cleanupRemoteTestFile(
       () =>
-        fetch(testUrl, {
+        net.fetch(testUrl, {
           method: 'DELETE',
           headers: buildWebDavHeaders(settings)
         }),
@@ -169,7 +170,7 @@ async function uploadWebDavBackup(
   settings: Extract<BackupSyncSettings, { provider: 'webdav' }>,
   sql: string
 ): Promise<string> {
-  const response = await fetch(settings.remoteUrl, {
+  const response = await net.fetch(settings.remoteUrl, {
     method: 'PUT',
     headers: buildWebDavHeaders(settings, {
       'content-type': 'application/sql; charset=utf-8'
@@ -187,7 +188,7 @@ async function uploadWebDavBackup(
 async function downloadWebDavBackup(
   settings: Extract<BackupSyncSettings, { provider: 'webdav' }>
 ): Promise<RemoteDownload> {
-  const response = await fetch(settings.remoteUrl, {
+  const response = await net.fetch(settings.remoteUrl, {
     method: 'GET',
     headers: buildWebDavHeaders(settings)
   })
@@ -322,7 +323,7 @@ async function signedS3Request(
     amzDate
   })
 
-  return fetch(url, {
+  return net.fetch(url.toString(), {
     method,
     headers,
     body: method === 'PUT' ? body : undefined

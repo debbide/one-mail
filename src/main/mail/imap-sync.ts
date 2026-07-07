@@ -1,5 +1,6 @@
-import { Socket, connect as connectTcp } from 'node:net'
+import { Socket } from 'node:net'
 import { TLSSocket, connect as connectTls } from 'node:tls'
+import { connectTcpWithProxy, connectTlsWithProxy } from '../services/proxy'
 import { getAccount } from '../db/repositories/account.repository'
 import { getDatabase, type SqliteParams } from '../db/connection'
 import { normalizeMailDisplayText } from '../../shared/mail-text'
@@ -148,16 +149,10 @@ class ImapSession {
   static async connect(account: ImapAccount): Promise<ImapSession> {
     const socket =
       account.imapSecurity === 'ssl_tls'
-        ? connectTls({
-            host: account.imapHost,
-            port: account.imapPort,
-            servername: account.imapHost,
+        ? await connectTlsWithProxy(account.imapHost, account.imapPort, {
             rejectUnauthorized: true
           })
-        : connectTcp({
-            host: account.imapHost,
-            port: account.imapPort
-          })
+        : await connectTcpWithProxy(account.imapHost, account.imapPort)
 
     const session = new ImapSession(socket)
     await session.waitForGreeting()

@@ -1,5 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
 import { getDatabase, getDatabaseKey } from '../connection'
+import { session } from 'electron'
+import { applyProxyToSession } from '../../services/proxy'
 import { getOpenAtLogin, setOpenAtLogin } from '../../services/login-item'
 import type { AppSettings, BackupSyncSettings, SettingsUpdateInput } from '../../ipc/types'
 
@@ -102,6 +104,9 @@ export function updateSettings(input: SettingsUpdateInput): AppSettings {
   writeSetting(settingsDefinition.proxyProtocol.key, next.proxyProtocol, settingsDefinition.proxyProtocol.type)
   writeSetting(settingsDefinition.proxyHost.key, next.proxyHost, settingsDefinition.proxyHost.type)
   writeSetting(settingsDefinition.proxyPort.key, String(next.proxyPort), settingsDefinition.proxyPort.type)
+
+  // Apply new proxy to current default session
+  applyProxyToSession(session.defaultSession)
 
   return getSettings()
 }

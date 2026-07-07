@@ -1,5 +1,6 @@
 import { Socket, connect as connectTcp } from 'node:net'
 import { TLSSocket, connect as connectTls, type ConnectionOptions } from 'node:tls'
+import type { Session } from 'electron'
 import http from 'node:http'
 import { SocksClient } from 'socks'
 import { getSettings } from '../db/repositories/settings.repository'
@@ -25,6 +26,19 @@ export function getProxyString(): string | undefined {
     return undefined
   }
   return `${config.protocol}://${config.host}:${config.port}`
+}
+
+export function applyProxyToSession(session: Session): void {
+  const proxyString = getProxyString()
+  if (proxyString) {
+    session.setProxy({ proxyRules: proxyString, proxyBypassRules: '<local>' }).catch((err) => {
+      console.error('Failed to set proxy for session', err)
+    })
+  } else {
+    session.setProxy({ proxyRules: '', proxyBypassRules: '' }).catch((err) => {
+      console.error('Failed to clear proxy for session', err)
+    })
+  }
 }
 
 export async function connectTcpWithProxy(host: string, port: number): Promise<Socket> {

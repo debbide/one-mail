@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, net } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import electronUpdater, { type AppUpdater, type ProgressInfo } from 'electron-updater'
 import { isBoringSslBadDecryptError } from '../runtime-errors'
@@ -298,10 +298,10 @@ function createUpdateStatus(
 }
 
 async function fetchLatestGitHubRelease(): Promise<GitHubLatestRelease> {
-  const response = await fetch(GITHUB_LATEST_RELEASE_API_URL, {
+  const response = await net.fetch(GITHUB_LATEST_RELEASE_API_URL, {
     headers: {
-      accept: 'application/vnd.github+json',
-      'user-agent': `OneMail/${app.getVersion()}`
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': `OneMail/${app.getVersion()}`
     }
   })
 

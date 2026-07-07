@@ -25,6 +25,8 @@ import {
   markAppQuitRequested,
   shouldHideWindowToTray
 } from './services/tray'
+import { applyProxyToSession } from './services/proxy'
+import { session } from 'electron'
 
 configureDevelopmentUserData()
 configurePortableUserData()
@@ -188,6 +190,8 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
+
+  applyProxyToSession(session.defaultSession)
 
   createWindow()
 
