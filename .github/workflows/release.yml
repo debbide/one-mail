@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release Tag (e.g. v26.630.1409)'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -70,7 +75,14 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build and publish
+        shell: bash
         run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+            VERSION="${TAG#v}"
+            npm version $VERSION --no-git-tag-version
+            export GITHUB_REF="refs/tags/$TAG"
+          fi
           pnpm run build
           pnpm exec electron-builder ${{ matrix.build_args }} --publish always
         env:
