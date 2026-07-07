@@ -76,7 +76,6 @@ async function testTlsConnection(
   })
 
   try {
-    await waitForTlsConnect(socket)
     await waitForImapGreeting(socket)
     await testLogin(socket, input, email, password)
   } finally {
@@ -94,7 +93,6 @@ async function testOAuthTlsConnection(
   })
 
   try {
-    await waitForTlsConnect(socket)
     await waitForImapGreeting(socket)
     await testOAuthLogin(socket, email, accessToken)
   } finally {
@@ -110,7 +108,6 @@ async function testPlainConnection(
   let socket: TestSocket = await connectTcpWithProxy(input.imapHost, input.imapPort)
 
   try {
-    await waitForTcpConnect(socket)
     await waitForImapGreeting(socket)
 
     if (input.imapSecurity === 'starttls') {
@@ -132,7 +129,6 @@ async function testOAuthPlainConnection(
   let socket: TestSocket = await connectTcpWithProxy(input.imapHost, input.imapPort)
 
   try {
-    await waitForTcpConnect(socket)
     await waitForImapGreeting(socket)
 
     if (input.imapSecurity === 'starttls') {
@@ -215,61 +211,6 @@ function upgradeToTls(socket: Socket, servername: string): Promise<TLSSocket> {
   })
 }
 
-function waitForTcpConnect(socket: Socket): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      cleanup()
-      reject(new Error('连接 IMAP 服务器超时，请检查服务器地址和端口。'))
-    }, CONNECTION_TIMEOUT_MS)
-
-    function cleanup(): void {
-      clearTimeout(timeout)
-      socket.off('connect', handleConnect)
-      socket.off('error', handleError)
-    }
-
-    function handleConnect(): void {
-      cleanup()
-      resolve()
-    }
-
-    function handleError(error: Error): void {
-      cleanup()
-      reject(toImapConnectionError(error))
-    }
-
-    socket.once('connect', handleConnect)
-    socket.once('error', handleError)
-  })
-}
-
-function waitForTlsConnect(socket: TLSSocket): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      cleanup()
-      reject(new Error('连接 IMAP 服务器超时，请检查服务器地址和端口。'))
-    }, CONNECTION_TIMEOUT_MS)
-
-    function cleanup(): void {
-      clearTimeout(timeout)
-      socket.off('secureConnect', handleSecureConnect)
-      socket.off('error', handleError)
-    }
-
-    function handleSecureConnect(): void {
-      cleanup()
-      resolve()
-    }
-
-    function handleError(error: Error): void {
-      cleanup()
-      reject(toImapConnectionError(error))
-    }
-
-    socket.once('secureConnect', handleSecureConnect)
-    socket.once('error', handleError)
-  })
-}
 
 function waitForImapGreeting(socket: TestSocket): Promise<void> {
   return waitForLine(socket, (line) => {
