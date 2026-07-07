@@ -572,4 +572,7 @@ export type OneMailApi = {
     revealPath: (path: string) => Promise<boolean>
     openExternal: (url: string) => Promise<boolean>
   }
+  translate: {
+    text: (input: { text: string; targetLang?: string }) => Promise<{ text: string }>
+  }
 }

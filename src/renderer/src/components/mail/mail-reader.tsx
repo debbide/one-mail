@@ -376,6 +376,7 @@ function MessageBody({
   canLoadBody,
   loadingBody,
   preparedHtml,
+  translatedBody,
   t,
   onLoadBody
 }: {
