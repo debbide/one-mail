@@ -1,4 +1,4 @@
-# OneMail
+# OneMail (Secondary Development)
 
 <p align="left">
   <img src="https://img.shields.io/badge/Electron-39-47848F?logo=electron&logoColor=white" alt="Electron 39" />
@@ -14,11 +14,24 @@
 
 OneMail 是一个本地优先的桌面邮件客户端，使用 Electron + React + TypeScript 构建。它通过 IMAP 同步邮件到本地 SQLite，支持多邮箱聚合、邮件筛选、正文安全预览、附件下载和 SQL 备份导入导出。
 
+> **⚠️ 关于本作 (About this Fork)**
+> 本项目是基于原作者 [zhihui-hu/one-mail](https://github.com/zhihui-hu/one-mail) 的二次开发版本。在此由衷感谢原作者提供的优秀开源基础！
+
 **语言**：中文 | [English](./README.en.md)
 
-**项目主页 / 下载页**：[https://zhihui-hu.github.io/one-mail/](https://zhihui-hu.github.io/one-mail/)
+**当前项目主页**：[https://github.com/debbide/one-mail](https://github.com/debbide/one-mail)
+**原项目主页**：[https://github.com/zhihui-hu/one-mail](https://github.com/zhihui-hu/one-mail)
 
-## ✨ 功能特性
+## 🚀 新增高级特性 (New Features)
+
+在原版的基础上，本项目重磅增加了以下独家功能：
+- 🌐 **100% 全局代理支持**：内置 HTTP/Socks5 代理设置。不仅支持底层的 IMAP/SMTP 协议走代理，还全面接管了 OAuth 授权弹窗（Chromium）和原生 HTTP 请求，彻底解决国内访问外网邮箱受限、微软多账号登录风控等“玄学”网络拦截问题！
+- 🪪 **微软 OAuth 2.0 登录**：原生接入 Microsoft OAuth2.0 授权流程，完美支持带有二步验证或高级安全保护的 Outlook/Hotmail/Office365 账号直接登录。
+- 🌍 **邮件一键多端机翻**：原生集成翻译服务。无论何种语种的邮件，点击一下即可智能翻译为中文。最重要的是：**完美保留了邮件内的高级排版、内联图片、表格及超链接**，带给您丝滑的本地化阅读体验！
+
+---
+
+## ✨ 基础功能特性 (Core Features)
 
 - 📬 **多邮箱账号**：支持 Gmail、Yahoo、阿里邮箱、阿里企业邮箱、189、搜狐、QQ/Foxmail、网易、Outlook/Hotmail、新浪、139、21CN、完美邮箱、iCloud、AOL、Yandex、Mail.ru 和自定义 IMAP。
 - 🧩 **统一收件箱体验**：多账号聚合查看，账号列表展示未读数、同步状态和账号操作。
