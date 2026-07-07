@@ -100,7 +100,15 @@ export function MailReader({
     null
   )
   const [isTranslating, setIsTranslating] = React.useState(false)
-  const [translatedBody, setTranslatedBody] = React.useState<string[] | null>(null)
+  const [translatedBody, setTranslatedBody] = React.useState<string | null>(null)
+
+  const preparedHtml =
+    canShowHtml &&
+    preparedHtmlState?.messageId === message.id &&
+    preparedHtmlState.sourceHtml === htmlSource &&
+    preparedHtmlState.allowExternalImages === externalContentAllowed
+      ? preparedHtmlState.result
+      : null
 
   const handleTranslate = React.useCallback(async () => {
     if (translatedBody) {
@@ -112,25 +120,19 @@ export function MailReader({
 
     setIsTranslating(true)
     try {
-      const textToTranslate = message.body.join('\n\n')
+      // If we have HTML, translate the HTML to preserve formatting. Otherwise use plain text.
+      const textToTranslate = preparedHtml ? preparedHtml.html : message.body.join('\n\n')
       const result = await window.api.translate.text({
         text: textToTranslate,
         targetLang: locale === 'en-US' ? 'en' : 'zh-CN'
       })
-      setTranslatedBody(result.text.split('\n\n'))
+      setTranslatedBody(result.text)
     } catch (error) {
       console.error('Translation failed', error)
     } finally {
       setIsTranslating(false)
     }
-  }, [message.body, translatedBody, locale])
-  const preparedHtml =
-    canShowHtml &&
-    preparedHtmlState?.messageId === message.id &&
-    preparedHtmlState.sourceHtml === htmlSource &&
-    preparedHtmlState.allowExternalImages === externalContentAllowed
-      ? preparedHtmlState.result
-      : null
+  }, [message.body, preparedHtml, translatedBody, locale])
   const blockedCount =
     preparedHtml?.blockedImageResourceCount ?? preparedHtml?.blockedResourceCount ?? 0
   const canLoadFullContent = canShowHtml && !externalContentAllowed && blockedCount > 0
@@ -385,7 +387,7 @@ function MessageBody({
   canLoadBody: boolean
   loadingBody: boolean
   preparedHtml: PreparedMailHtml | null
-  translatedBody: string[] | null
+  translatedBody: string | null
   t: (key: TranslationKey, values?: Record<string, string | number>) => string
   onLoadBody: () => void
 }): React.JSX.Element {
@@ -425,11 +427,16 @@ function MessageBody({
   return (
     <section className="prose-mail flex min-w-0 flex-col select-text text-sm text-foreground">
       {translatedBody ? (
-        <div className="mail-text min-h-40 w-full max-w-full select-text whitespace-pre-wrap">
-          {translatedBody.map((paragraph, index) => (
-            <p key={index}>{paragraph}</p>
-          ))}
-        </div>
+        canShowHtml ? (
+          <div
+            className="mail-html min-h-40 select-text bg-background"
+            dangerouslySetInnerHTML={{ __html: translatedBody }}
+          />
+        ) : (
+          <div className="mail-text min-h-40 w-full max-w-full select-text whitespace-pre-wrap">
+            {translatedBody}
+          </div>
+        )
       ) : canShowHtml ? (
         <div
           className="mail-html min-h-40 select-text bg-background"
