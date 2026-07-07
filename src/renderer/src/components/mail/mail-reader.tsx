@@ -3,6 +3,7 @@ import {
   FileText,
   Forward,
   Image,
+  Languages,
   Loader2,
   Paperclip,
   Reply,
@@ -98,6 +99,31 @@ export function MailReader({
   const [preparedHtmlState, setPreparedHtmlState] = React.useState<PreparedMailHtmlState | null>(
     null
   )
+  const [isTranslating, setIsTranslating] = React.useState(false)
+  const [translatedBody, setTranslatedBody] = React.useState<string[] | null>(null)
+
+  const handleTranslate = React.useCallback(async () => {
+    if (translatedBody) {
+      setTranslatedBody(null)
+      return
+    }
+
+    if (!message.body || message.body.length === 0) return
+
+    setIsTranslating(true)
+    try {
+      const textToTranslate = message.body.join('\n\n')
+      const result = await window.api.translate.text({
+        text: textToTranslate,
+        targetLang: locale === 'en-US' ? 'en' : 'zh-CN'
+      })
+      setTranslatedBody(result.text.split('\n\n'))
+    } catch (error) {
+      console.error('Translation failed', error)
+    } finally {
+      setIsTranslating(false)
+    }
+  }, [message.body, translatedBody, locale])
   const preparedHtml =
     canShowHtml &&
     preparedHtmlState?.messageId === message.id &&
@@ -211,7 +237,7 @@ export function MailReader({
                 <div className="flex items-center gap-1">
                   <MailActionButton
                     label={t('mail.reader.reply')}
-                    disabled={actionPending}
+                    disabled={actionPending || deleting || isTranslating}
                     onClick={onReply}
                   >
                     {actionPending ? (
@@ -222,7 +248,7 @@ export function MailReader({
                   </MailActionButton>
                   <MailActionButton
                     label={t('mail.reader.forward')}
-                    disabled={actionPending}
+                    disabled={actionPending || deleting || isTranslating}
                     onClick={onForward}
                   >
                     {actionPending ? (
@@ -240,6 +266,17 @@ export function MailReader({
                       <Loader2 className="animate-spin" aria-hidden="true" />
                     ) : (
                       <Trash2 aria-hidden="true" />
+                    )}
+                  </MailActionButton>
+                  <MailActionButton
+                    label={isTranslating ? t('mail.reader.translating') : t('mail.reader.translate')}
+                    disabled={actionPending || deleting || isTranslating}
+                    onClick={handleTranslate}
+                  >
+                    {isTranslating ? (
+                      <Loader2 className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Languages aria-hidden="true" className={translatedBody ? 'text-primary' : ''} />
                     )}
                   </MailActionButton>
                 </div>
@@ -260,6 +297,7 @@ export function MailReader({
               canLoadBody={canLoadBody}
               loadingBody={loadingBody}
               preparedHtml={preparedHtml}
+              translatedBody={translatedBody}
               t={t}
               onLoadBody={onLoadBody}
             />
@@ -346,6 +384,7 @@ function MessageBody({
   canLoadBody: boolean
   loadingBody: boolean
   preparedHtml: PreparedMailHtml | null
+  translatedBody: string[] | null
   t: (key: TranslationKey, values?: Record<string, string | number>) => string
   onLoadBody: () => void
 }): React.JSX.Element {
@@ -384,7 +423,13 @@ function MessageBody({
 
   return (
     <section className="prose-mail flex min-w-0 flex-col select-text text-sm text-foreground">
-      {canShowHtml ? (
+      {translatedBody ? (
+        <div className="mail-text min-h-40 w-full max-w-full select-text whitespace-pre-wrap">
+          {translatedBody.map((paragraph, index) => (
+            <p key={index}>{paragraph}</p>
+          ))}
+        </div>
+      ) : canShowHtml ? (
         <div
           className="mail-html min-h-40 select-text bg-background"
           dangerouslySetInnerHTML={{ __html: preparedHtml?.html ?? '' }}

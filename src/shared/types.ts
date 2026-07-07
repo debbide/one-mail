@@ -368,6 +368,9 @@ export type AppSettings = {
   openAtLogin: boolean
   externalImagesBlocked: boolean
   locale: string
+  proxyProtocol: 'none' | 'http' | 'socks5'
+  proxyHost: string
+  proxyPort: number
 }
 
 export type SettingsUpdateInput = Partial<AppSettings>

@@ -8,7 +8,10 @@ const defaultSettings: AppSettings = {
   syncWindowDays: 90,
   openAtLogin: false,
   externalImagesBlocked: true,
-  locale: 'zh-CN'
+  locale: 'zh-CN',
+  proxyProtocol: 'none',
+  proxyHost: '127.0.0.1',
+  proxyPort: 1080
 }
 
 const settingsDefinition = {
@@ -18,7 +21,10 @@ const settingsDefinition = {
   externalImagesBlocked: { key: 'external_images_blocked', type: 'boolean' },
   locale: { key: 'locale', type: 'string' },
   lastAttachmentDownloadDir: { key: 'last_attachment_download_dir', type: 'string' },
-  backupSyncSettings: { key: 'backup_sync_settings', type: 'json' }
+  backupSyncSettings: { key: 'backup_sync_settings', type: 'json' },
+  proxyProtocol: { key: 'proxy_protocol', type: 'string' },
+  proxyHost: { key: 'proxy_host', type: 'string' },
+  proxyPort: { key: 'proxy_port', type: 'number' }
 } as const
 
 type EncryptedSettingsPayload = {
@@ -57,7 +63,10 @@ export function getSettings(): AppSettings {
       byKey.get(settingsDefinition.externalImagesBlocked.key),
       true
     ),
-    locale: byKey.get(settingsDefinition.locale.key)?.setting_value ?? defaultSettings.locale
+    locale: byKey.get(settingsDefinition.locale.key)?.setting_value ?? defaultSettings.locale,
+    proxyProtocol: (byKey.get(settingsDefinition.proxyProtocol.key)?.setting_value as AppSettings['proxyProtocol']) ?? defaultSettings.proxyProtocol,
+    proxyHost: byKey.get(settingsDefinition.proxyHost.key)?.setting_value ?? defaultSettings.proxyHost,
+    proxyPort: readNumber(byKey.get(settingsDefinition.proxyPort.key), 1080)
   }
 }
 
@@ -90,6 +99,9 @@ export function updateSettings(input: SettingsUpdateInput): AppSettings {
     settingsDefinition.externalImagesBlocked.type
   )
   writeSetting(settingsDefinition.locale.key, next.locale, settingsDefinition.locale.type)
+  writeSetting(settingsDefinition.proxyProtocol.key, next.proxyProtocol, settingsDefinition.proxyProtocol.type)
+  writeSetting(settingsDefinition.proxyHost.key, next.proxyHost, settingsDefinition.proxyHost.type)
+  writeSetting(settingsDefinition.proxyPort.key, String(next.proxyPort), settingsDefinition.proxyPort.type)
 
   return getSettings()
 }
@@ -160,6 +172,21 @@ function ensureDefaultSettings(): void {
     settingsDefinition.locale.key,
     defaultSettings.locale,
     settingsDefinition.locale.type
+  )
+  updateMissingSetting(
+    settingsDefinition.proxyProtocol.key,
+    defaultSettings.proxyProtocol,
+    settingsDefinition.proxyProtocol.type
+  )
+  updateMissingSetting(
+    settingsDefinition.proxyHost.key,
+    defaultSettings.proxyHost,
+    settingsDefinition.proxyHost.type
+  )
+  updateMissingSetting(
+    settingsDefinition.proxyPort.key,
+    String(defaultSettings.proxyPort),
+    settingsDefinition.proxyPort.type
   )
 }
 

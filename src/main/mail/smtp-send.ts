@@ -30,6 +30,7 @@ import { appendMessageToSentFolder } from './sent-folder-append'
 import { SimpleImapSession } from './imap-session'
 import { loadAttachmentContent } from './attachment-downloader'
 import { authenticateImapSession } from './imap-auth'
+import { getProxyString } from '../services/proxy'
 
 export type SmtpSecurity = 'ssl_tls' | 'starttls' | 'none'
 
@@ -244,7 +245,8 @@ function createSmtpTransport(
     port: smtpConfig.port,
     secure: smtpConfig.security === 'ssl_tls',
     requireTLS: smtpConfig.security === 'starttls',
-    auth
+    auth,
+    proxy: getProxyString()
   })
 }
 

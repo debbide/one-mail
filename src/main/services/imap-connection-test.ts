@@ -1,7 +1,8 @@
-import { Socket, connect as connectTcp } from 'node:net'
+import { Socket } from 'node:net'
 import { TLSSocket, connect as connectTls } from 'node:tls'
 import type { AccountCreateInput } from '../ipc/types'
 import { toImapConnectionError } from '../mail/imap-errors'
+import { connectTcpWithProxy, connectTlsWithProxy } from './proxy'
 
 const CONNECTION_TIMEOUT_MS = 10000
 const OAUTH_IMAP_AUTH_RETRY_DELAYS_MS = [1200, 2500, 5000]
@@ -70,10 +71,7 @@ async function testTlsConnection(
   email: string,
   password: string
 ): Promise<void> {
-  const socket = connectTls({
-    host: input.imapHost,
-    port: input.imapPort,
-    servername: input.imapHost,
+  const socket = await connectTlsWithProxy(input.imapHost, input.imapPort, {
     rejectUnauthorized: true
   })
 
@@ -91,10 +89,7 @@ async function testOAuthTlsConnection(
   email: string,
   accessToken: string
 ): Promise<void> {
-  const socket = connectTls({
-    host: input.imapHost,
-    port: input.imapPort,
-    servername: input.imapHost,
+  const socket = await connectTlsWithProxy(input.imapHost, input.imapPort, {
     rejectUnauthorized: true
   })
 
@@ -112,10 +107,7 @@ async function testPlainConnection(
   email: string,
   password: string
 ): Promise<void> {
-  let socket: TestSocket = connectTcp({
-    host: input.imapHost,
-    port: input.imapPort
-  })
+  let socket: TestSocket = await connectTcpWithProxy(input.imapHost, input.imapPort)
 
   try {
     await waitForTcpConnect(socket)
@@ -137,10 +129,7 @@ async function testOAuthPlainConnection(
   email: string,
   accessToken: string
 ): Promise<void> {
-  let socket: TestSocket = connectTcp({
-    host: input.imapHost,
-    port: input.imapPort
-  })
+  let socket: TestSocket = await connectTcpWithProxy(input.imapHost, input.imapPort)
 
   try {
     await waitForTcpConnect(socket)

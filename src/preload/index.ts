@@ -101,6 +101,9 @@ const api = {
       return () => ipcRenderer.off('updates/status', listener)
     }
   },
+  translate: {
+    text: (input) => ipcRenderer.invoke('translate/text', input)
+  },
   system: {
     info: () => ipcRenderer.invoke('system/info'),
     setTitleBarTheme: (theme: AppTheme) => ipcRenderer.invoke('system/setTitleBarTheme', theme),

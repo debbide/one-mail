@@ -104,6 +104,9 @@ type SettingsFormValues = {
   openAtLogin: boolean
   externalImagesBlocked: boolean
   locale: 'zh-CN' | 'en-US'
+  proxyProtocol: 'none' | 'http' | 'socks5'
+  proxyHost: string
+  proxyPort: number
 }
 
 const sections: Array<{
@@ -190,7 +193,10 @@ export function SettingsDialog({
             syncWindowDays: currentValues.syncWindowDays,
             openAtLogin: currentValues.openAtLogin,
             externalImagesBlocked: currentValues.externalImagesBlocked,
-            locale: currentValues.locale
+            locale: currentValues.locale,
+            proxyProtocol: currentValues.proxyProtocol,
+            proxyHost: currentValues.proxyHost,
+            proxyPort: currentValues.proxyPort
           })
           lastSavedValuesRef.current = currentValues
         } catch (submitError) {
@@ -526,6 +532,52 @@ function GeneralSettingsForm({
           }
           error={form.formState.errors.syncIntervalMinutes?.message}
           invalid={Boolean(form.formState.errors.syncIntervalMinutes)}
+        />
+
+        <SettingRow
+          icon={Languages}
+          title={t('settings.proxy.title')}
+          description={t('settings.proxy.description')}
+          control={
+            <div className="flex items-center gap-2">
+              <Controller
+                control={form.control}
+                name="proxyProtocol"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-28">
+                      <SelectValue placeholder={t('settings.proxyProtocol.label')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="none">{t('settings.proxyProtocol.none')}</SelectItem>
+                        <SelectItem value="http">HTTP</SelectItem>
+                        <SelectItem value="socks5">SOCKS5</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <Input
+                id="proxy-host"
+                className="w-32"
+                placeholder={t('settings.proxyHost.placeholder')}
+                aria-invalid={Boolean(form.formState.errors.proxyHost)}
+                {...form.register('proxyHost')}
+              />
+              <Input
+                id="proxy-port"
+                className="w-20"
+                type="number"
+                min={1}
+                max={65535}
+                aria-invalid={Boolean(form.formState.errors.proxyPort)}
+                {...form.register('proxyPort', { valueAsNumber: true })}
+              />
+            </div>
+          }
+          error={form.formState.errors.proxyPort?.message || form.formState.errors.proxyHost?.message}
+          invalid={Boolean(form.formState.errors.proxyPort) || Boolean(form.formState.errors.proxyHost)}
         />
 
         <SettingRow
@@ -930,7 +982,14 @@ function createSettingsSchema(t: (key: TranslationKey) => string) {
       .max(3650, t('settings.syncWindow.errorMax')),
     openAtLogin: z.boolean(),
     externalImagesBlocked: z.boolean(),
-    locale: z.enum(['zh-CN', 'en-US'])
+    locale: z.enum(['zh-CN', 'en-US']),
+    proxyProtocol: z.enum(['none', 'http', 'socks5']),
+    proxyHost: z.string(),
+    proxyPort: z.coerce
+      .number<number>('Port required')
+      .int('Port integer')
+      .min(1, t('settings.proxyPort.errorMin'))
+      .max(65535, t('settings.proxyPort.errorMax'))
   })
 }
 
@@ -940,7 +999,10 @@ function toFormValues(settings: AppSettings | null): SettingsFormValues {
     syncWindowDays: settings?.syncWindowDays ?? 90,
     openAtLogin: settings?.openAtLogin === true,
     externalImagesBlocked: settings?.externalImagesBlocked !== false,
-    locale: settings?.locale === 'en-US' ? 'en-US' : 'zh-CN'
+    locale: settings?.locale === 'en-US' ? 'en-US' : 'zh-CN',
+    proxyProtocol: settings?.proxyProtocol ?? 'none',
+    proxyHost: settings?.proxyHost ?? '127.0.0.1',
+    proxyPort: settings?.proxyPort ?? 1080
   }
 }
 
@@ -950,6 +1012,9 @@ function areSettingsEqual(first: SettingsFormValues, second: SettingsFormValues)
     first.syncWindowDays === second.syncWindowDays &&
     first.openAtLogin === second.openAtLogin &&
     first.externalImagesBlocked === second.externalImagesBlocked &&
-    first.locale === second.locale
+    first.locale === second.locale &&
+    first.proxyProtocol === second.proxyProtocol &&
+    first.proxyHost === second.proxyHost &&
+    first.proxyPort === second.proxyPort
   )
 }
