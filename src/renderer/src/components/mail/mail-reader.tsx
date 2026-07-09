@@ -100,7 +100,12 @@ export function MailReader({
     null
   )
   const [isTranslating, setIsTranslating] = React.useState(false)
-  const [translatedBody, setTranslatedBody] = React.useState<string | null>(null)
+  const [translationState, setTranslationState] = React.useState<{
+    messageId: string
+    body: string
+  } | null>(null)
+  const translatedBody =
+    translationState?.messageId === message.id ? translationState.body : null
 
   const preparedHtml =
     canShowHtml &&
@@ -112,12 +117,13 @@ export function MailReader({
 
   const handleTranslate = React.useCallback(async () => {
     if (translatedBody) {
-      setTranslatedBody(null)
+      setTranslationState(null)
       return
     }
 
     if (!message.body || message.body.length === 0) return
 
+    const translatingMessageId = message.id
     setIsTranslating(true)
     try {
       // If we have HTML, use DOM traversal to translate text nodes only
@@ -136,7 +142,7 @@ export function MailReader({
         }
 
         if (textNodes.length === 0) {
-          setTranslatedBody(preparedHtml.html)
+          setTranslationState({ messageId: translatingMessageId, body: preparedHtml.html })
           setIsTranslating(false)
           return
         }
@@ -169,20 +175,20 @@ export function MailReader({
           }
         }
         
-        setTranslatedBody(doc.body.innerHTML)
+        setTranslationState({ messageId: translatingMessageId, body: doc.body.innerHTML })
       } else {
         const result = await window.api.translate.text({
           text: message.body.join('\n\n'),
           targetLang: locale === 'en-US' ? 'en' : 'zh-CN'
         })
-        setTranslatedBody(result.text)
+        setTranslationState({ messageId: translatingMessageId, body: result.text })
       }
     } catch (error) {
       console.error('Translation failed', error)
     } finally {
       setIsTranslating(false)
     }
-  }, [message.body, preparedHtml, translatedBody, locale])
+  }, [message.body, message.id, preparedHtml, translatedBody, locale])
   const blockedCount =
     preparedHtml?.blockedImageResourceCount ?? preparedHtml?.blockedResourceCount ?? 0
   const canLoadFullContent = canShowHtml && !externalContentAllowed && blockedCount > 0
