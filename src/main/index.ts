@@ -26,6 +26,7 @@ import {
   shouldHideWindowToTray
 } from './services/tray'
 import { applyProxyToSession } from './services/proxy'
+import { logDiagnostic } from './services/diagnostics-log'
 import { session } from 'electron'
 
 configureDevelopmentUserData()
@@ -121,6 +122,22 @@ function createWindow(initialRoute = '/'): BrowserWindow {
     if (mainWindow === nextWindow) mainWindow = null
   })
 
+  nextWindow.webContents.on('render-process-gone', (_event, details) => {
+    logDiagnostic(
+      'render-process-gone',
+      `reason=${details.reason} exitCode=${details.exitCode}`
+    )
+  })
+
+  nextWindow.webContents.on('unresponsive', () => {
+    logDiagnostic('renderer', 'window became unresponsive')
+  })
+
+  nextWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (level < 2) return
+    logDiagnostic('renderer-console', `${message} (${sourceId}:${line})`)
+  })
+
   nextWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -171,6 +188,14 @@ function getCopyLinkMenuLabel(): string {
 app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.huzhihui.onemail')
+  logDiagnostic('app', `ready version=${app.getVersion()} platform=${process.platform}`)
+
+  app.on('child-process-gone', (_event, details) => {
+    logDiagnostic(
+      'child-process-gone',
+      `type=${details.type} reason=${details.reason} exitCode=${details.exitCode}`
+    )
+  })
   if (process.platform === 'darwin') {
     app.dock?.setIcon(appIcon)
   }

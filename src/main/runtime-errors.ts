@@ -1,3 +1,5 @@
+import { logDiagnostic } from './services/diagnostics-log'
+
 const BORINGSSL_BAD_DECRYPT_PATTERN =
   /Cipher functions:OPENSSL_internal:BAD_DECRYPT|OPENSSL_internal:BAD_DECRYPT|e_aes\.cc\.inc/i
 
@@ -32,6 +34,7 @@ function handleUncaughtException(error: Error): void {
     return
   }
 
+  logDiagnostic('uncaughtException', getErrorMessage(error))
   process.off('uncaughtException', handleUncaughtException)
   throw error
 }
@@ -42,5 +45,6 @@ function handleUnhandledRejection(reason: unknown): void {
     return
   }
 
+  logDiagnostic('unhandledRejection', getErrorMessage(reason))
   throw reason instanceof Error ? reason : new Error(getErrorMessage(reason))
 }
