@@ -52,7 +52,34 @@ export class SimpleImapSession {
   }
 
   async authenticateXOAuth2(username: string, accessToken: string): Promise<void> {
-    await this.command(`AUTHENTICATE XOAUTH2 ${formatXOAuth2Payload(username, accessToken)}`)
+    this.assertSocketHealthy()
+    const tag = `${this.tagPrefix}${String(this.tagIndex++).padStart(4, '0')}`
+    await writeLine(
+      this.socket,
+      `${tag} AUTHENTICATE XOAUTH2 ${formatXOAuth2Payload(username, accessToken)}`
+    )
+    const response = await readAuthenticateResponse(this.socket, tag)
+
+    const lastLine = response
+      .trimEnd()
+      .split(/\r?\n/)
+      .findLast((line) => line.trimStart().startsWith(tag))
+
+    if (lastLine && new RegExp(`^${tag}\\s+OK\\b`, 'i').test(lastLine.trimStart())) {
+      return
+    }
+
+    // On failure the server first emits a `+ <base64>` SASL challenge whose payload
+    // is the real reason (JSON). We must send an empty line to let it finish with a
+    // tagged NO, then surface that decoded reason instead of the generic message.
+    const challenge = extractXOAuth2Challenge(response)
+    if (challenge) {
+      await writeRaw(this.socket, '\r\n')
+      await readUntilTagged(this.socket, tag).catch(() => undefined)
+      throw new Error(`IMAP OAuth 登录认证失败：${sanitizeImapResponse(challenge)}`)
+    }
+
+    throw new Error(`IMAP 命令失败：${sanitizeImapResponse(lastLine ?? 'AUTHENTICATE failed')}`)
   }
 
   async identifyClient(): Promise<void> {
@@ -379,6 +406,86 @@ function waitForLine(socket: TestSocket, isDone: (line: string) => boolean): Pro
     socket.once('error', handleError)
     socket.once('close', handleClose)
   })
+}
+
+function readAuthenticateResponse(
+  socket: TestSocket,
+  tag: string,
+  timeoutMs = CONNECTION_TIMEOUT_MS
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let buffer = ''
+    let timeout = setTimeout(() => {
+      cleanup()
+      reject(new Error('IMAP 服务器响应超时。'))
+    }, timeoutMs)
+
+    function cleanup(): void {
+      clearTimeout(timeout)
+      socket.off('data', handleData)
+      socket.off('error', handleError)
+      socket.off('close', handleClose)
+    }
+
+    function resetTimeout(): void {
+      clearTimeout(timeout)
+      timeout = setTimeout(() => {
+        cleanup()
+        reject(new Error('IMAP 服务器响应超时。'))
+      }, timeoutMs)
+    }
+
+    function handleData(chunk: Buffer): void {
+      buffer += chunk.toString('utf8')
+
+      // A leading `+` line is the server's SASL continuation (failure detail).
+      if (/(^|\r?\n)\+/.test(buffer)) {
+        cleanup()
+        resolve(buffer)
+        return
+      }
+
+      if (new RegExp(`(^|\\r?\\n)${tag}\\s+(OK|NO|BAD)\\b`, 'i').test(buffer)) {
+        cleanup()
+        resolve(buffer)
+        return
+      }
+
+      resetTimeout()
+    }
+
+    function handleError(error: Error): void {
+      cleanup()
+      reject(toImapConnectionError(error))
+    }
+
+    function handleClose(): void {
+      cleanup()
+      reject(new Error('IMAP 连接已断开。'))
+    }
+
+    socket.on('data', handleData)
+    socket.once('error', handleError)
+    socket.once('close', handleClose)
+  })
+}
+
+function extractXOAuth2Challenge(response: string): string | undefined {
+  const line = response
+    .split(/\r?\n/)
+    .map((value) => value.trimEnd())
+    .find((value) => /^\+\s?/.test(value))
+  if (!line) return undefined
+
+  const payload = line.replace(/^\+\s?/, '').trim()
+  if (!payload) return undefined
+
+  try {
+    const decoded = Buffer.from(payload, 'base64').toString('utf8')
+    return decoded.trim() || payload
+  } catch {
+    return payload
+  }
 }
 
 function readUntilTagged(
