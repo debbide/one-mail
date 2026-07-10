@@ -8,11 +8,6 @@ import { closeDatabase, initializeDatabase } from './db/connection'
 import { registerIpcHandlers } from './ipc'
 import { installRuntimeErrorGuards } from './runtime-errors'
 import {
-  checkGitHubReleaseForUpdates,
-  startAutoUpdateChecks,
-  stopAutoUpdateChecks
-} from './services/auto-update'
-import {
   requestForegroundMailboxSync,
   requestManualMailboxSync,
   startMailboxWatchers,
@@ -111,7 +106,6 @@ function createWindow(initialRoute = '/'): BrowserWindow {
 
   nextWindow.on('show', () => {
     requestForegroundMailboxSync('show')
-    checkGitHubReleaseForUpdates()
   })
 
   nextWindow.on('restore', () => {
@@ -202,7 +196,6 @@ app.whenReady().then(() => {
   initializeDatabase()
   registerIpcHandlers()
   startMailboxWatchers()
-  startAutoUpdateChecks()
   initializeTray(process.platform === 'win32' ? windowsIcon : appIcon, {
     showWindow: () => showMainWindow(),
     syncNow: () => requestManualMailboxSync()
@@ -240,7 +233,6 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   markAppQuitRequested()
   destroyTray()
-  stopAutoUpdateChecks()
   stopMailboxWatchers()
   closeDatabase()
 })
