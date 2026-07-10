@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, net } from 'electron'
 
 const LOGO_CACHE = new Map<string, string | null>()
 const LOGO_TIMEOUT_MS = 5000
@@ -45,7 +45,9 @@ async function fetchLogoUrl(url: string): Promise<string | null> {
   const timeout = setTimeout(() => controller.abort(), LOGO_TIMEOUT_MS)
 
   try {
-    const response = await fetch(url, { signal: controller.signal })
+    // Use Electron's net.fetch (Chromium network stack): it honors the app proxy
+    // and avoids the undici abort assertion crash that Node's global fetch can hit.
+    const response = await net.fetch(url, { signal: controller.signal })
     if (!response.ok) return null
 
     const contentType = response.headers.get('content-type') ?? 'image/png'

@@ -3,6 +3,12 @@ import { logDiagnostic } from './services/diagnostics-log'
 const BORINGSSL_BAD_DECRYPT_PATTERN =
   /Cipher functions:OPENSSL_internal:BAD_DECRYPT|OPENSSL_internal:BAD_DECRYPT|e_aes\.cc\.inc/i
 
+// undici (Node global fetch) can throw an uncaught assertion — not a rejectable
+// error — when a request is aborted while its socket is finishing. It escapes
+// local try/catch and would otherwise crash the main process.
+const UNDICI_ABORT_ASSERTION_PATTERN =
+  /assert\(!this\.paused\)|Parser\.finish.*undici|onHttpSocketEnd/i
+
 let installed = false
 
 export function installRuntimeErrorGuards(): void {
@@ -15,6 +21,10 @@ export function installRuntimeErrorGuards(): void {
 
 export function isBoringSslBadDecryptError(error: unknown): boolean {
   return BORINGSSL_BAD_DECRYPT_PATTERN.test(getErrorMessage(error))
+}
+
+export function isUndiciAbortAssertionError(error: unknown): boolean {
+  return UNDICI_ABORT_ASSERTION_PATTERN.test(getErrorMessage(error))
 }
 
 export function getErrorMessage(error: unknown): string {
@@ -34,6 +44,11 @@ function handleUncaughtException(error: Error): void {
     return
   }
 
+  if (isUndiciAbortAssertionError(error)) {
+    logDiagnostic('uncaughtException', `Ignored undici abort assertion: ${getErrorMessage(error)}`)
+    return
+  }
+
   logDiagnostic('uncaughtException', getErrorMessage(error))
   process.off('uncaughtException', handleUncaughtException)
   throw error
@@ -42,6 +57,11 @@ function handleUncaughtException(error: Error): void {
 function handleUnhandledRejection(reason: unknown): void {
   if (isBoringSslBadDecryptError(reason)) {
     console.warn('Ignored BoringSSL BAD_DECRYPT unhandled rejection.')
+    return
+  }
+
+  if (isUndiciAbortAssertionError(reason)) {
+    logDiagnostic('unhandledRejection', `Ignored undici abort assertion: ${getErrorMessage(reason)}`)
     return
   }
 
