@@ -1,4 +1,4 @@
-import type { AppSettings, AppUpdateStatus, SystemInfo } from '../../../../shared/types'
+import type { AppSettings, SystemInfo } from '../../../../shared/types'
 import {
   ChevronDown,
   CloudDownload,
@@ -6,7 +6,6 @@ import {
   Inbox,
   Link,
   Plus,
-  RotateCcw,
   Settings,
   Upload
 } from 'lucide-react'
@@ -40,7 +39,6 @@ import type { SyncNotice } from './use-sync-feedback'
 import { formatSyncNotice } from './use-sync-feedback'
 import { useI18n } from '@renderer/lib/i18n'
 import { cn } from '@renderer/lib/utils'
-import { hasAvailableUpdate } from '@renderer/lib/update-status'
 
 export function NoAccountsBody({
   importingSql,
@@ -192,32 +190,21 @@ export function StatusBar({
   accountCount,
   messageCount,
   syncNotice,
-  updateStatus,
   onRevealDatabase,
-  onOpenVersion,
-  onInstallUpdate
+  onOpenVersion
 }: {
   systemInfo: SystemInfo | null
   settings: AppSettings | null
   accountCount: number
   messageCount: number
   syncNotice: SyncNotice
-  updateStatus: AppUpdateStatus | null
   onRevealDatabase: () => void
   onOpenVersion: () => void
-  onInstallUpdate: () => void
 }): React.JSX.Element {
   const { t } = useI18n()
   const syncText = formatSyncNotice(syncNotice, t)
-  const updateText = formatUpdateStatus(updateStatus, t)
-  const hasUpdate = hasAvailableUpdate(updateStatus)
   const versionLabel = systemInfo?.appVersion ? `v${systemInfo.appVersion}` : '...'
-  const versionTitle =
-    hasUpdate && updateStatus?.latestVersion
-      ? t('status.openHomepageForUpdate', { version: updateStatus.latestVersion })
-      : hasUpdate
-        ? t('status.openHomepageForUpdateGeneric')
-        : t('status.openRepository')
+  const versionTitle = t('status.openRepository')
   const databasePath = systemInfo?.databasePath
   const databaseLabel = databasePath ? getFileName(databasePath) : t('common.loading')
 
@@ -244,26 +231,12 @@ export function StatusBar({
             {syncText}
           </span>
         ) : null}
-        {updateText ? (
-          <span className="max-w-64 truncate text-foreground" title={updateText}>
-            {updateText}
-          </span>
-        ) : null}
-        {updateStatus?.state === 'downloaded' ? (
-          <Button className="h-5 rounded-sm px-1.5 text-xs" size="xs" onClick={onInstallUpdate}>
-            <RotateCcw data-icon="inline-start" />
-            {t('status.updateRestart')}
-          </Button>
-        ) : null}
         <span>{t('status.accounts', { count: accountCount })}</span>
         <span>{t('status.messages', { count: messageCount })}</span>
         <span>{t('status.cacheDays', { days: settings?.syncWindowDays ?? 90 })}</span>
         <button
           type="button"
-          className={cn(
-            'outline-none transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60',
-            hasUpdate && 'font-medium text-warning hover:text-warning'
-          )}
+          className="outline-none transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60"
           title={versionTitle}
           aria-label={versionTitle}
           disabled={!systemInfo?.appVersion}
@@ -274,30 +247,6 @@ export function StatusBar({
       </div>
     </footer>
   )
-}
-
-function formatUpdateStatus(
-  status: AppUpdateStatus | null,
-  t: ReturnType<typeof useI18n>['t']
-): string | null {
-  if (!status || status.state === 'idle') return null
-
-  if (status.state === 'checking') return t('status.updateChecking')
-  if (status.state === 'downloading') {
-    return t('status.updateDownloading', {
-      percent: Math.round(status.progress?.percent ?? 0)
-    })
-  }
-  if (status.state === 'downloaded') return t('status.updateDownloaded')
-  if (status.state === 'installing') return t('status.updateInstalling')
-  if (status.state === 'available') {
-    return t('status.updateAvailable', { version: status.latestVersion ?? '' })
-  }
-  if (status.state === 'not_available') return t('status.updateNotAvailable')
-  if (status.state === 'error') return t('status.updateError')
-  if (status.state === 'unsupported') return t('status.updateUnsupported')
-
-  return null
 }
 
 function getFileName(path: string): string {

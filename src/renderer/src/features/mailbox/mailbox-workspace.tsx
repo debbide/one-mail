@@ -36,7 +36,6 @@ import {
   deleteDraftMessage,
   deleteOutboxMessage,
   getAppUpdateStatus,
-  installAppUpdate,
   loadAccounts,
   loadInitialData,
   loadMessageDetail,
@@ -59,7 +58,7 @@ import {
   updateAccount
 } from '@renderer/lib/api'
 import { normalizeLocale, useI18n } from '@renderer/lib/i18n'
-import { ONEMAIL_HOMEPAGE_URL, hasAvailableUpdate } from '@renderer/lib/update-status'
+import { ONEMAIL_REPOSITORY_URL } from '@renderer/lib/update-status'
 import type { OutboxMessage } from '@renderer/lib/api'
 import { toast } from 'sonner'
 import { NoAccountsBody, StatusBar, TitleBar } from './mailbox-chrome'
@@ -932,20 +931,11 @@ export function MailboxWorkspace(): React.JSX.Element {
         accountCount={realAccounts.length}
         messageCount={selectedAccount.messageCount ?? messages.length}
         syncNotice={syncNotice}
-        updateStatus={updateStatus}
         onRevealDatabase={() => {
           void revealDatabaseInFileManager()
         }}
         onOpenVersion={() => {
-          if (hasAvailableUpdate(updateStatus)) {
-            void openExternalUrl(ONEMAIL_HOMEPAGE_URL)
-            return
-          }
-          setSettingsInitialSection('about')
-          setDialogKind('settings')
-        }}
-        onInstallUpdate={() => {
-          void installAppUpdate()
+          void openExternalUrl(ONEMAIL_REPOSITORY_URL)
         }}
       />
 
